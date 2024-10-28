@@ -3,16 +3,41 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {}
+    fn it_works() {
+        let _ = Greengrass::new_greengrass_client();
+        //let _ = Allocator::Allocator();
+    }
 }
 
 #[cxx::bridge]
-mod ffi {
+pub mod Greengrass {
     unsafe extern "C++" {
-        /*include!("cxx-demo/include/blobstore.h");
+        include!("include/aws.h");
 
-        type BlobstoreClient;
+        type GreengrassCoreIpcClient;
 
-        fn new_blobstore_client() -> UniquePtr<BlobstoreClient>;*/
+        fn new_greengrass_client() -> UniquePtr<GreengrassCoreIpcClient>;
     }
 }
+
+/*#[cxx::bridge(namespace = "Aws::Crt::Io")]
+pub mod Bootstrap {
+    unsafe extern "C++" {
+        include!("aws/crt/io/Bootstrap.h");
+
+        type ClientBootstrap;
+
+        fn ClientBootstrap(allocator: &crate::Allocator::Allocator) -> UniquePtr<ClientBootstrap>;
+    }
+}
+
+#[cxx::bridge(namespace = "Aws::Crt")]
+pub mod Crt {
+    unsafe extern "C++" {
+        include!("aws/crt/Api.h");
+
+        type Allocator;
+
+        fn DefaultAllocator() -> Allocator;
+    }
+}*/
