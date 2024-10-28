@@ -3,16 +3,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {}
+    fn it_works() {
+        let _ = ffi::GreengrassCoreIpcClient(8);
+    }
 }
 
-#[cxx::bridge]
-mod ffi {
+#[cxx::bridge(namespace = "aws::Greengrass")]
+pub mod ffi {
     unsafe extern "C++" {
-        /*include!("cxx-demo/include/blobstore.h");
+        include!("aws/greengrass/GreengrassCoreIpcClient.h");
 
-        type BlobstoreClient;
+        type GreengrassCoreIpcClient;
 
-        fn new_blobstore_client() -> UniquePtr<BlobstoreClient>;*/
+        fn GreengrassCoreIpcClient(blah: u8) -> UniquePtr<GreengrassCoreIpcClient>;
     }
 }
