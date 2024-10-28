@@ -4,41 +4,40 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let _ = Greengrass::GreengrassCoreIpcClient();
+        let _ = Greengrass::new_greengrass_client();
+        //let _ = Allocator::Allocator();
     }
 }
 
-#[cxx::bridge(namespace = "Aws::Greengrass")]
+#[cxx::bridge]
 pub mod Greengrass {
     unsafe extern "C++" {
-        include!("aws/greengrass/GreengrassCoreIpcClient.h");
+        include!("include/aws.h");
 
         type GreengrassCoreIpcClient;
 
-        fn GreengrassCoreIpcClient() -> UniquePtr<GreengrassCoreIpcClient>;
+        fn new_greengrass_client() -> UniquePtr<GreengrassCoreIpcClient>;
     }
 }
 
-#[cxx::bridge(namespace = "Aws::Crt::Io")]
+/*#[cxx::bridge(namespace = "Aws::Crt::Io")]
 pub mod Bootstrap {
     unsafe extern "C++" {
         include!("aws/crt/io/Bootstrap.h");
 
         type ClientBootstrap;
 
-        fn ClientBootstrap(
-            allocator: UniquePtr<Allocator::Allocator>,
-        ) -> UniquePtr<ClientBootstrap>;
+        fn ClientBootstrap(allocator: &crate::Allocator::Allocator) -> UniquePtr<ClientBootstrap>;
     }
 }
 
-#[cxx::bridge(namespace = "Aws::Crt::Allocator")]
-pub mod Allocator {
+#[cxx::bridge(namespace = "Aws::Crt")]
+pub mod Crt {
     unsafe extern "C++" {
-        include!("aws/crt/Allocator.h");
+        include!("aws/crt/Api.h");
 
         type Allocator;
 
-        fn DefaultAllocator() -> UniquePtr<Allocator>;
+        fn DefaultAllocator() -> Allocator;
     }
-}
+}*/
