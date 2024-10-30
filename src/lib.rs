@@ -4,7 +4,8 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let _ = Greengrass::new_greengrass_client();
+        let client = Greengrass::new_greengrass_client();
+        assert!(!client.is_null());
     }
 }
 
