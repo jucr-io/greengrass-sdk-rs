@@ -1,3 +1,7 @@
+mod ffi;
+
+use ffi::Greengrass;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5,18 +9,6 @@ mod tests {
     #[test]
     fn it_works() {
         let _client = IpcClient::new_connected().unwrap();
-    }
-}
-
-#[cxx::bridge]
-mod Greengrass {
-    unsafe extern "C++" {
-        include!("include/aws.h");
-
-        type GreengrassCoreIpcClient;
-
-        fn new_greengrass_client() -> UniquePtr<GreengrassCoreIpcClient>;
-        fn client_connect(client: Pin<&mut GreengrassCoreIpcClient>) -> String;
     }
 }
 

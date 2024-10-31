@@ -1,12 +1,12 @@
 fn main() {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    cxx_build::bridge("src/lib.rs")
+    cxx_build::bridge("src/ffi.rs")
         .include(manifest_dir)
         .file("src/aws.cc")
         .std("c++23")
         .compile("greenrass-ipc");
 
-    println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=src/ffi.rs");
     println!("cargo:rerun-if-changed=src/aws.cc");
     println!("cargo:rerun-if-changed=include/aws.h");
 
