@@ -1,7 +1,12 @@
 #include <iostream>
+#include <string>
+#include <string_view>
+#include <format>
 #include "include/aws.h"
 #include <aws/greengrass/GreengrassCoreIpcClient.h>
 #include <aws/crt/Api.h>
+
+using namespace Aws::Crt::Io;
 
 // FIXME: What do we do in the handlers here?
 class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
@@ -29,18 +34,23 @@ class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
 /// @return A unique pointer to the Greengrass IPC client that is connected.
 std::unique_ptr<GreengrassCoreIpcClient> new_greengrass_client()
 {
-    Aws::Crt::Allocator *allocator = Aws::Crt::DefaultAllocator();
-    Aws::Crt::Io::ClientBootstrap bootstrap(allocator);
-    IpcClientLifecycleHandler lifecycleHandler;
-    auto client = std::make_unique<GreengrassCoreIpcClient>(bootstrap);
+    EventLoopGroup eventLoopGroup(1);
+    DefaultHostResolver socketResolver(eventLoopGroup, 64, 30);
+    ClientBootstrap bootstrap(eventLoopGroup, socketResolver);
 
-    auto connectionStatus = client.get()->Connect(lifecycleHandler).get();
+    return std::make_unique<GreengrassCoreIpcClient>(bootstrap);
+}
+
+rust::String client_connect(GreengrassCoreIpcClient &client)
+{
+    IpcClientLifecycleHandler lifecycleHandler;
+    auto connectionStatus = client.Connect(lifecycleHandler).get();
     if (!connectionStatus)
     {
-        std::cerr << "Failed to establish IPC connection: " << connectionStatus.StatusToString() << std::endl;
-
-        return nullptr;
+        auto str = std::format("{}", connectionStatus.StatusToString());
+        return rust::String(str);
     }
 
-    return client;
+    // FIXME: Find a way to return a null string.
+    return rust::String("");
 }
