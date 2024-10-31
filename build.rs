@@ -3,7 +3,7 @@ fn main() {
     cxx_build::bridge("src/lib.rs")
         .include(manifest_dir)
         .file("src/aws.cc")
-        .std("c++14")
+        .std("c++23")
         .compile("greenrass-ipc");
 
     println!("cargo:rerun-if-changed=src/lib.rs");
