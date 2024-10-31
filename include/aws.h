@@ -5,3 +5,4 @@
 using Aws::Greengrass::GreengrassCoreIpcClient;
 
 std::unique_ptr<GreengrassCoreIpcClient> new_greengrass_client();
+rust::String client_connect(GreengrassCoreIpcClient &client);
