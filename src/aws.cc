@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <string_view>
-#include <format>
 #include "include/aws.h"
 #include <aws/crt/Api.h>
 
@@ -46,7 +45,7 @@ rust::String client_connect(GreengrassCoreIpcClient &client)
     auto connectionStatus = client.Connect(lifecycleHandler).get();
     if (!connectionStatus)
     {
-        auto str = std::format("{}", connectionStatus.StatusToString());
+        auto str = std::string(connectionStatus.StatusToString());
         return rust::String(str);
     }
 
