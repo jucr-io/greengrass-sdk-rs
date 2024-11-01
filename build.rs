@@ -13,6 +13,7 @@ fn main() {
         .define("BUILD_SHARED_LIBS", "OFF")
         .build();
     println!("cargo:rustc-link-search=native={}/lib64", dst.display());
+    println!("cargo:rustc-link-search=native={}/lib", dst.display());
 
     // Link to the AWS IoT SDK libraries
 
