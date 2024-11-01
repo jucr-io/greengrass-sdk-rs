@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <string_view>
 #include "include/aws.h"
 #include <aws/crt/Api.h>
 
