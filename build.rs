@@ -44,7 +44,7 @@ fn main() {
         .include(manifest_dir)
         .include(aws_sdk_include)
         .file("src/aws.cc")
-        .std("c++23")
+        .std("c++17")
         .compile("greenrass-ipc");
 
     println!("cargo:rerun-if-changed=src/ffi.rs");
