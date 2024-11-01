@@ -1,17 +1,18 @@
+use std::env::var;
+
 fn main() {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    cxx_build::bridge("src/ffi.rs")
-        .include(manifest_dir)
-        .file("src/aws.cc")
-        .std("c++23")
-        .compile("greenrass-ipc");
+    // Build the C++ SDK.
+    use cmake::Config;
 
-    println!("cargo:rerun-if-changed=src/ffi.rs");
-    println!("cargo:rerun-if-changed=src/aws.cc");
-    println!("cargo:rerun-if-changed=include/aws.h");
-
-    // Set the linker search path to the AWS IoT SDK libraries.
-    println!("cargo::rustc-link-search=native=/usr/lib64");
+    let sdk_profile = match var("PROFILE").unwrap().as_str() {
+        "release" => "Release",
+        _ => "Debug",
+    };
+    let dst = Config::new("aws-iot-device-sdk-cpp-v2")
+        .profile(sdk_profile)
+        .define("BUILD_SHARED_LIBS", "OFF")
+        .build();
+    println!("cargo:rustc-link-search=native={}/lib64", dst.display());
 
     // Link to the AWS IoT SDK libraries
 
@@ -35,4 +36,16 @@ fn main() {
     println!("cargo:rustc-link-lib=static:+whole-archive=aws-crt-cpp");
     println!("cargo:rustc-link-lib=static:+whole-archive=GreengrassIpc-cpp");
     println!("cargo:rustc-link-lib=static:+whole-archive=EventstreamRpc-cpp");
+
+    // Now build the glue code.
+    let manifest_dir = var("CARGO_MANIFEST_DIR").unwrap();
+    cxx_build::bridge("src/ffi.rs")
+        .include(manifest_dir)
+        .file("src/aws.cc")
+        .std("c++23")
+        .compile("greenrass-ipc");
+
+    println!("cargo:rerun-if-changed=src/ffi.rs");
+    println!("cargo:rerun-if-changed=src/aws.cc");
+    println!("cargo:rerun-if-changed=include/aws.h");
 }
