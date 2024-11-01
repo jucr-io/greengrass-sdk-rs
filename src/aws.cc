@@ -3,7 +3,6 @@
 #include <string_view>
 #include <format>
 #include "include/aws.h"
-#include <aws/greengrass/GreengrassCoreIpcClient.h>
 #include <aws/crt/Api.h>
 
 using namespace Aws::Crt::Io;
