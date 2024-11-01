@@ -39,8 +39,10 @@ fn main() {
 
     // Now build the glue code.
     let manifest_dir = var("CARGO_MANIFEST_DIR").unwrap();
+    let aws_sdk_include = format!("{}/include", dst.display());
     cxx_build::bridge("src/ffi.rs")
         .include(manifest_dir)
+        .include(aws_sdk_include)
         .file("src/aws.cc")
         .std("c++23")
         .compile("greenrass-ipc");
