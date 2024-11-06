@@ -21,6 +21,10 @@ fn main() {
             // The prepackaged internal crypto library doens't build for aarch64.
             .define("USE_OPENSSL", "ON")
             .target(&target);
+        println!("cargo:rustc-link-lib=dylib=crypto");
+        println!("cargo:rustc-link-lib=dylib=ssl");
+    } else {
+        println!("cargo:rustc-link-lib=static:+whole-archive=crypto");
     }
 
     let dst = config.build();
@@ -31,8 +35,6 @@ fn main() {
     // Link to the AWS IoT SDK libraries
 
     // C libraries
-    println!("cargo:rustc-link-lib=dylib=crypto");
-    println!("cargo:rustc-link-lib=dylib=ssl");
     println!("cargo:rustc-link-lib=static:+whole-archive=s2n");
     println!("cargo:rustc-link-lib=static:+whole-archive=aws-c-io");
     println!("cargo:rustc-link-lib=static:+whole-archive=aws-c-iot");
