@@ -2,23 +2,37 @@ use std::env::var;
 
 fn main() {
     // Build the C++ SDK.
-    use cmake::Config;
+    let mut config = cmake::Config::new("aws-iot-device-sdk-cpp-v2");
+    config.define("BUILD_SHARED_LIBS", "OFF");
 
     let sdk_profile = match var("PROFILE").unwrap().as_str() {
         "release" => "Release",
         _ => "Debug",
     };
-    let dst = Config::new("aws-iot-device-sdk-cpp-v2")
-        .profile(sdk_profile)
-        .define("BUILD_SHARED_LIBS", "OFF")
-        .build();
+    config.profile(sdk_profile);
+
+    let target = var("TARGET").unwrap();
+    let host = var("HOST").unwrap();
+    if target != host {
+        // The C++ SDK is expecting a target triplet, without the vendor part.
+        let target = target.replace("-unknown", "");
+        config
+            .define("CMAKE_CROSSCOMPILING", "TRUE")
+            // The prepackaged internal crypto library doens't build for aarch64.
+            .define("USE_OPENSSL", "ON")
+            .target(&target);
+    }
+
+    let dst = config.build();
+
     println!("cargo:rustc-link-search=native={}/lib64", dst.display());
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
 
     // Link to the AWS IoT SDK libraries
 
     // C libraries
-    println!("cargo:rustc-link-lib=static:+whole-archive=crypto");
+    println!("cargo:rustc-link-lib=dylib=crypto");
+    println!("cargo:rustc-link-lib=dylib=ssl");
     println!("cargo:rustc-link-lib=static:+whole-archive=s2n");
     println!("cargo:rustc-link-lib=static:+whole-archive=aws-c-io");
     println!("cargo:rustc-link-lib=static:+whole-archive=aws-c-iot");
