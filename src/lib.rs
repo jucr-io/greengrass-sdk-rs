@@ -13,7 +13,7 @@ mod tests {
 }
 
 pub struct IpcClient {
-    client: cxx::UniquePtr<Greengrass::GreengrassCoreIpcClient>,
+    client: cxx::UniquePtr<Greengrass::IpcClient>,
 }
 
 impl IpcClient {

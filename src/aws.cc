@@ -2,9 +2,17 @@
 #include <string>
 #include <string_view>
 #include "include/aws.h"
-#include <aws/crt/Api.h>
 
 using namespace Aws::Crt::Io;
+
+IpcClient::IpcClient()
+{
+    EventLoopGroup eventLoopGroup(1);
+    DefaultHostResolver socketResolver(eventLoopGroup, 64, 30);
+    ClientBootstrap bootstrap(eventLoopGroup, socketResolver);
+
+    this->client = new GreengrassCoreIpcClient(bootstrap);
+}
 
 // FIXME: What do we do in the handlers here?
 class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
@@ -30,24 +38,22 @@ class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
 
 /// @brief  Create a new Greengrass IPC client and connect.
 /// @return A unique pointer to the Greengrass IPC client that is connected.
-std::unique_ptr<GreengrassCoreIpcClient> new_greengrass_client()
+std::unique_ptr<IpcClient>
+new_greengrass_client()
 {
-    EventLoopGroup eventLoopGroup(1);
-    DefaultHostResolver socketResolver(eventLoopGroup, 64, 30);
-    ClientBootstrap bootstrap(eventLoopGroup, socketResolver);
-
-    return std::make_unique<GreengrassCoreIpcClient>(bootstrap);
+    return std::make_unique<IpcClient>();
 }
 
-rust::String client_connect(GreengrassCoreIpcClient &client)
+rust::String client_connect(IpcClient &client)
 {
     IpcClientLifecycleHandler lifecycleHandler;
-    auto connectionStatus = client.Connect(lifecycleHandler).get();
+    auto connectionStatus = client.client->Connect(lifecycleHandler).get();
     if (!connectionStatus)
     {
         auto str = std::string(connectionStatus.StatusToString());
         return rust::String(str);
     }
+    client.connected = true;
 
     // FIXME: Find a way to return a null string.
     return rust::String("");
