@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/target/cxxbridge"
             ],
             "defines": [],
             "compilerPath": "/usr/lib64/ccache/clang",
