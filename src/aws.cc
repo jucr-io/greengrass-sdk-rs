@@ -37,32 +37,24 @@ class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
     }
 };
 
-/// @brief  Create a new Greengrass IPC client and connect.
-/// @return A unique pointer to the Greengrass IPC client that is connected.
-std::unique_ptr<IpcClient>
-new_greengrass_client()
-{
-    return std::make_unique<IpcClient>();
-}
-
-rust::String client_connect(IpcClient &client)
+rust::String IpcClient::connect()
 {
     IpcClientLifecycleHandler lifecycleHandler;
-    auto connectionStatus = client.client->Connect(lifecycleHandler).get();
+    auto connectionStatus = this->client->Connect(lifecycleHandler).get();
     if (!connectionStatus)
     {
         auto str = std::string(connectionStatus.StatusToString());
         return rust::String(str);
     }
-    client.connected = true;
+    this->connected = true;
 
     // FIXME: Find a way to return a null string.
     return rust::String("");
 }
 
-rust::String client_defer_component_update(IpcClient &client, uint64_t recheck_timeout_ms)
+rust::String IpcClient::deferComponentUpdate(uint64_t recheck_timeout_ms)
 {
-    auto deferComponentUpdate = client.client->NewDeferComponentUpdate();
+    auto deferComponentUpdate = this->client->NewDeferComponentUpdate();
     DeferComponentUpdateRequest deferComponentUpdateRequest;
     deferComponentUpdateRequest.SetRecheckAfterMs(recheck_timeout_ms);
 
@@ -95,8 +87,16 @@ rust::String client_defer_component_update(IpcClient &client, uint64_t recheck_t
         }
     }
 
-    client.defer_updates = true;
+    this->defer_updates = true;
 
     // FIXME: Find a way to return a null string.
     return rust::String("");
+}
+
+/// @brief  Create a new Greengrass IPC client and connect.
+/// @return A unique pointer to the Greengrass IPC client that is connected.
+std::unique_ptr<IpcClient>
+new_greengrass_client()
+{
+    return std::make_unique<IpcClient>();
 }

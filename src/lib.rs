@@ -24,7 +24,10 @@ impl IpcClient {
     }
 
     pub fn defer_component_update(&mut self, recheck_timeout_ms: u64) -> Result<(), String> {
-        match Greengrass::client_defer_component_update(self.client.pin_mut(), recheck_timeout_ms)
+        match self
+            .client
+            .pin_mut()
+            .defer_component_update(recheck_timeout_ms)
             .as_str()
         {
             "" => Ok(()),
@@ -43,7 +46,7 @@ impl IpcClient {
     }
 
     fn connect(&mut self) -> Result<(), String> {
-        match Greengrass::client_connect(self.client.pin_mut()).as_str() {
+        match self.client.pin_mut().connect().as_str() {
             "" => Ok(()),
             err => Err(err.to_string()),
         }
