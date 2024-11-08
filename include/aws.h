@@ -8,14 +8,15 @@ using Aws::Greengrass::GreengrassCoreIpcClient;
 class IpcClient
 {
 public:
-    GreengrassCoreIpcClient *client;
-    bool connected = false;
-    bool defer_updates = false;
-
     IpcClient();
 
     rust::String connect();
     rust::String deferComponentUpdate(uint64_t recheck_timeout_ms);
+
+private:
+    GreengrassCoreIpcClient *client;
+    bool connected = false;
+    bool defer_updates = false;
 };
 
 std::unique_ptr<IpcClient>
