@@ -4,6 +4,7 @@
 #include "include/aws.h"
 
 using namespace Aws::Crt::Io;
+using Aws::Greengrass::DeferComponentUpdateRequest;
 
 IpcClient::IpcClient()
 {
@@ -54,6 +55,47 @@ rust::String client_connect(IpcClient &client)
         return rust::String(str);
     }
     client.connected = true;
+
+    // FIXME: Find a way to return a null string.
+    return rust::String("");
+}
+
+rust::String client_defer_component_update(IpcClient &client, uint64_t recheck_timeout_ms)
+{
+    auto deferComponentUpdate = client.client->NewDeferComponentUpdate();
+    DeferComponentUpdateRequest deferComponentUpdateRequest;
+    deferComponentUpdateRequest.SetRecheckAfterMs(recheck_timeout_ms);
+
+    auto activate = deferComponentUpdate->Activate(deferComponentUpdateRequest);
+    activate.wait();
+
+    auto responseFuture = deferComponentUpdate->GetResult();
+    if (responseFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout)
+    {
+        return rust::String("Operation timed out.");
+    }
+    auto response = responseFuture.get();
+    if (!response)
+    {
+        // Handle error.
+        auto errorType = response.GetResultType();
+        if (errorType == OPERATION_ERROR)
+        {
+            auto msg = response.GetOperationError()->GetMessage();
+            if (!msg.has_value())
+            {
+                return rust::String("Unknown error.");
+            }
+            return rust::String(std::string(msg.value()));
+        }
+        else
+        {
+            auto msg = response.GetRpcError().StatusToString();
+            return rust::String(std::string(msg));
+        }
+    }
+
+    client.defer_updates = true;
 
     // FIXME: Find a way to return a null string.
     return rust::String("");

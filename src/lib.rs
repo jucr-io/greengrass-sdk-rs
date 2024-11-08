@@ -23,6 +23,15 @@ impl IpcClient {
         client.connect().map(|_| client)
     }
 
+    pub fn defer_component_update(&mut self, recheck_timeout_ms: u64) -> Result<(), String> {
+        match Greengrass::client_defer_component_update(self.client.pin_mut(), recheck_timeout_ms)
+            .as_str()
+        {
+            "" => Ok(()),
+            err => Err(err.to_string()),
+        }
+    }
+
     fn new() -> IpcClient {
         let client = Greengrass::new_greengrass_client();
         if client.is_null() {
