@@ -6,10 +6,9 @@ pub(crate) mod Greengrass {
         type IpcClient;
 
         fn new_greengrass_client() -> UniquePtr<IpcClient>;
-        fn client_connect(client: Pin<&mut IpcClient>) -> String;
-        fn client_defer_component_update(
-            client: Pin<&mut IpcClient>,
-            recheck_timeout_ms: u64,
-        ) -> String;
+
+        fn connect(self: Pin<&mut IpcClient>) -> String;
+        #[cxx_name = "deferComponentUpdate"]
+        fn defer_component_update(self: Pin<&mut IpcClient>, recheck_timeout_ms: u64) -> String;
     }
 }
