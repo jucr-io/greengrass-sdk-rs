@@ -5,18 +5,19 @@
 
 using Aws::Greengrass::GreengrassCoreIpcClient;
 
+struct UpdateNotifier;
+
 class IpcClient
 {
 public:
     IpcClient();
 
-    rust::String connect();
+    rust::String connect(rust::Box<UpdateNotifier> update_notifier);
     rust::String deferComponentUpdate(uint64_t recheck_timeout_ms);
 
 private:
     GreengrassCoreIpcClient *client;
     bool connected = false;
-    bool defer_updates = false;
 };
 
 std::unique_ptr<IpcClient>

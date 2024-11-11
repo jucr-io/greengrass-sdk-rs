@@ -1,6 +1,15 @@
 mod ffi;
 
 use ffi::Greengrass;
+use std::sync::{Arc, Mutex};
+use tokio::{
+    sync::{
+        mpsc::{Receiver, Sender},
+        Mutex as AsyncMutex,
+    },
+    task::JoinHandle,
+};
+use tracing::error;
 
 #[cfg(test)]
 mod tests {
@@ -13,42 +22,95 @@ mod tests {
 }
 
 pub struct IpcClient {
-    client: cxx::UniquePtr<Greengrass::IpcClient>,
+    inner: Arc<IpcClientInner>,
+}
+
+struct IpcClientInner {
+    client: Mutex<cxx::UniquePtr<Greengrass::IpcClient>>,
+    component_update_event_tx: Sender<()>,
+    component_update_event_rx: AsyncMutex<Receiver<()>>,
+    pause_component_update_task: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl IpcClient {
     pub fn new_connected() -> Result<IpcClient, String> {
-        let mut client = IpcClient::new();
+        let client = IpcClient::new();
 
         client.connect().map(|_| client)
     }
 
-    pub fn defer_component_update(&mut self, recheck_timeout_ms: u64) -> Result<(), String> {
-        match self
-            .client
-            .pin_mut()
-            .defer_component_update(recheck_timeout_ms)
-            .as_str()
+    pub fn pause_component_update(&self) {
+        let inner = self.inner.clone();
+        self.inner
+            .pause_component_update_task
+            .lock()
+            .unwrap()
+            .get_or_insert(tokio::spawn(async move {
+                loop {
+                    let _ = inner.component_update_event_rx.lock().await.recv().await;
+
+                    match inner
+                        .client
+                        .lock()
+                        .unwrap()
+                        .pin_mut()
+                        .defer_component_update(DEFER_COMPONENT_UPDATE_TIMEOUT_MS)
+                        .as_str()
+                    {
+                        "" => (),
+                        err => error!("{}", err.to_string()),
+                    }
+                }
+            }));
+    }
+
+    pub fn resume_component_update(&self) {
+        if let Some(handle) = self
+            .inner
+            .pause_component_update_task
+            .lock()
+            .unwrap()
+            .take()
         {
-            "" => Ok(()),
-            err => Err(err.to_string()),
+            handle.abort();
         }
     }
 
-    fn new() -> IpcClient {
+    fn new() -> Self {
         let client = Greengrass::new_greengrass_client();
         if client.is_null() {
             // Don't think this happens, but just in case.
             panic!("Failed to create IPC client");
         }
 
-        IpcClient { client }
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        Self {
+            inner: Arc::new(IpcClientInner {
+                client: Mutex::new(client),
+                component_update_event_tx: tx,
+                component_update_event_rx: AsyncMutex::new(rx),
+                pause_component_update_task: Mutex::new(None),
+            }),
+        }
     }
 
-    fn connect(&mut self) -> Result<(), String> {
-        match self.client.pin_mut().connect().as_str() {
+    fn connect(&self) -> Result<(), String> {
+        let update_notifier =
+            ffi::UpdateNotifier::new(self.inner.component_update_event_tx.clone()).into();
+        match self
+            .inner
+            .client
+            .lock()
+            .unwrap()
+            .pin_mut()
+            .connect(update_notifier)
+            .as_str()
+        {
             "" => Ok(()),
             err => Err(err.to_string()),
         }
     }
 }
+
+// 1 second.
+const DEFER_COMPONENT_UPDATE_TIMEOUT_MS: u64 = 1000;
