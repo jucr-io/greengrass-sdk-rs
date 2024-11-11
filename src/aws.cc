@@ -4,7 +4,7 @@
 #include "include/aws.h"
 
 using namespace Aws::Crt::Io;
-using Aws::Greengrass::DeferComponentUpdateRequest;
+using namespace Aws::Greengrass;
 
 IpcClient::IpcClient()
 {
@@ -37,7 +37,44 @@ class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
     }
 };
 
-rust::String IpcClient::connect()
+/*class ComponentUpdateResponseHandler : public SubscribeToComponentUpdatesStreamHandler
+{
+public:
+    ComponentUpdateResponseHandler(rust::Box<UpdateNotifier> update_notifier)
+    {
+        this->update_notifier = std::move(update_notifier);
+    }
+
+    virtual ~ComponentUpdateResponseHandler() {}
+
+private:
+    void OnStreamEvent(ComponentUpdatePolicyEvents *response) override
+    {
+        auto event = response->GetPreUpdateEvent();
+        if (!event.has_value())
+        {
+            return;
+        }
+
+        // auto eventValue = event.value().``;
+    }
+
+    bool OnStreamError(OperationError *error) override
+    {
+        // Handle error.
+        (void)error;
+        return false; // Return true to close stream, false to keep stream open.
+    }
+
+    void OnStreamClosed() override
+    {
+        // Handle close.
+    }
+
+    rust::Box<UpdateNotifier> update_notifier;
+};*/
+
+rust::String IpcClient::connect(rust::Box<UpdateNotifier> update_notifier)
 {
     IpcClientLifecycleHandler lifecycleHandler;
     auto connectionStatus = this->client->Connect(lifecycleHandler).get();
@@ -86,8 +123,6 @@ rust::String IpcClient::deferComponentUpdate(uint64_t recheck_timeout_ms)
             return rust::String(std::string(msg));
         }
     }
-
-    this->defer_updates = true;
 
     // FIXME: Find a way to return a null string.
     return rust::String("");
