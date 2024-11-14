@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include "include/aws.h"
+#include "greengrass-sdk-rs/src/ffi.rs"
 
 using namespace Aws::Crt::Io;
 using namespace Aws::Greengrass;
@@ -37,12 +38,12 @@ class IpcClientLifecycleHandler : public ConnectionLifecycleHandler
     }
 };
 
-/*class ComponentUpdateResponseHandler : public SubscribeToComponentUpdatesStreamHandler
+class ComponentUpdateResponseHandler : public SubscribeToComponentUpdatesStreamHandler
 {
 public:
     ComponentUpdateResponseHandler(rust::Box<UpdateNotifier> update_notifier)
+        : update_notifier(std::move(update_notifier))
     {
-        this->update_notifier = std::move(update_notifier);
     }
 
     virtual ~ComponentUpdateResponseHandler() {}
@@ -56,7 +57,7 @@ private:
             return;
         }
 
-        // auto eventValue = event.value().``;
+        this->update_notifier.into_raw()->notify();
     }
 
     bool OnStreamError(OperationError *error) override
@@ -72,7 +73,7 @@ private:
     }
 
     rust::Box<UpdateNotifier> update_notifier;
-};*/
+};
 
 rust::String IpcClient::connect(rust::Box<UpdateNotifier> update_notifier)
 {
@@ -84,6 +85,38 @@ rust::String IpcClient::connect(rust::Box<UpdateNotifier> update_notifier)
         return rust::String(str);
     }
     this->connected = true;
+
+    SubscribeToComponentUpdatesRequest request;
+    auto handler = std::make_shared<ComponentUpdateResponseHandler>(std::move(update_notifier));
+    auto operation = this->client->NewSubscribeToComponentUpdates(handler);
+    auto activate = operation->Activate(request);
+    activate.wait();
+
+    auto responseFuture = operation->GetResult();
+    if (responseFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout)
+    {
+        return rust::String("Operation timed out.");
+    }
+    auto response = responseFuture.get();
+    if (!response)
+    {
+        // Handle error.
+        auto errorType = response.GetResultType();
+        if (errorType == OPERATION_ERROR)
+        {
+            auto msg = response.GetOperationError()->GetMessage();
+            if (!msg.has_value())
+            {
+                return rust::String("Unknown error.");
+            }
+            return rust::String(std::string(msg.value()));
+        }
+        else
+        {
+            auto msg = response.GetRpcError().StatusToString();
+            return rust::String(std::string(msg));
+        }
+    }
 
     // FIXME: Find a way to return a null string.
     return rust::String("");

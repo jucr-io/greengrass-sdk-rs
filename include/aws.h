@@ -5,6 +5,8 @@
 
 using Aws::Greengrass::GreengrassCoreIpcClient;
 
+// FIXME: We shouldn't need to define this here but if we include the generated `ffi.rs.h`,
+//        it leads to some strange issue about `IpcClient` declaration.
 struct UpdateNotifier;
 
 class IpcClient
