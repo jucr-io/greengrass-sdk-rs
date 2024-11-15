@@ -1,4 +1,5 @@
 use std::env::var;
+use fs_extra::copy_items;
 
 fn main() {
     // Build the C++ SDK.
@@ -14,12 +15,28 @@ fn main() {
     let target = var("TARGET").unwrap();
     let host = var("HOST").unwrap();
     if target != host {
-        // The C++ SDK is expecting a target triplet, without the vendor part.
-        let target = target.replace("-unknown", "");
+        // update s2n headers - probably should be corrected in CMakeList.txt
+        // or here with proper include headers dir.
+        let base_dir = "aws-iot-device-sdk-cpp-v2/crt/aws-crt-cpp/crt/";
+        let s2n_src = "s2n/api";
+        let s2n_dst = "aws-c-io/include";
+        let mut from_paths = Vec::new();
+        from_paths.push(format!("{}/{}", base_dir, s2n_src));
+        from_paths.push(format!("{}/{}", base_dir, "s2n/s2n.h"));
+        copy_items(
+            &from_paths,
+            &s2n_dst,
+            &fs_extra::dir::CopyOptions::new()
+        ).expect("s2n headers copied properly");
         config
             .define("CMAKE_CROSSCOMPILING", "TRUE")
             // The prepackaged internal crypto library doens't build for aarch64.
             .define("USE_OPENSSL", "ON")
+            // Somehow the OpenSSL paths were NOT detected by Cmake's find lib in Docker
+            .define("OPENSSL_ROOT_DIR", "/usr/lib/aarch64-linux-gnu/")
+            .define("OPENSSL_CRYPTO_LIBRARY", "/usr/lib/aarch64-linux-gnu/")
+            .define("OPENSSL_INCLUDE_DIR", "/usr/include/openssl")
+            .define("USE_S2N", "1")
             .target(&target);
         println!("cargo:rustc-link-lib=dylib=crypto");
         println!("cargo:rustc-link-lib=dylib=ssl");
