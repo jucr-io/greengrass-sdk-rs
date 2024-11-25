@@ -1,3 +1,5 @@
+pub mod protocol;
+
 use std::sync::{Arc, Mutex};
 use tokio::{
     sync::{
