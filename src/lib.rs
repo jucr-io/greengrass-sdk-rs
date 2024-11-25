@@ -1,6 +1,3 @@
-mod ffi;
-
-use ffi::Greengrass;
 use std::sync::{Arc, Mutex};
 use tokio::{
     sync::{
@@ -9,7 +6,6 @@ use tokio::{
     },
     task::JoinHandle,
 };
-use tracing::error;
 
 #[cfg(test)]
 mod tests {
@@ -26,8 +22,7 @@ pub struct IpcClient {
 }
 
 struct IpcClientInner {
-    client: Mutex<cxx::UniquePtr<Greengrass::IpcClient>>,
-    component_update_event_tx: Sender<()>,
+    _component_update_event_tx: Sender<()>,
     component_update_event_rx: AsyncMutex<Receiver<()>>,
     pause_component_update_task: Mutex<Option<JoinHandle<()>>>,
 }
@@ -49,17 +44,8 @@ impl IpcClient {
                 loop {
                     let _ = inner.component_update_event_rx.lock().await.recv().await;
 
-                    match inner
-                        .client
-                        .lock()
-                        .unwrap()
-                        .pin_mut()
-                        .defer_component_update(DEFER_COMPONENT_UPDATE_TIMEOUT_MS)
-                        .as_str()
-                    {
-                        "" => (),
-                        err => error!("{}", err.to_string()),
-                    }
+                    // TODO: Implement deferring of component update.
+                    let _ = DEFER_COMPONENT_UPDATE_TIMEOUT_MS;
                 }
             }));
     }
@@ -77,17 +63,10 @@ impl IpcClient {
     }
 
     fn new() -> Self {
-        let client = Greengrass::new_greengrass_client();
-        if client.is_null() {
-            // Don't think this happens, but just in case.
-            panic!("Failed to create IPC client");
-        }
-
         let (tx, rx) = tokio::sync::mpsc::channel(1);
         Self {
             inner: Arc::new(IpcClientInner {
-                client: Mutex::new(client),
-                component_update_event_tx: tx,
+                _component_update_event_tx: tx,
                 component_update_event_rx: AsyncMutex::new(rx),
                 pause_component_update_task: Mutex::new(None),
             }),
@@ -95,20 +74,11 @@ impl IpcClient {
     }
 
     fn connect(&self) -> Result<(), String> {
-        let update_notifier =
-            ffi::UpdateNotifier::new(self.inner.component_update_event_tx.clone()).into();
-        match self
-            .inner
-            .client
-            .lock()
-            .unwrap()
-            .pin_mut()
-            .connect(update_notifier)
-            .as_str()
-        {
-            "" => Ok(()),
-            err => Err(err.to_string()),
-        }
+        // TODO:
+        // 1. Connection to the IPC server over the unix socket.
+        // 2. Subscribe to the component update event in a task, passing it the sender.
+
+        unimplemented!();
     }
 }
 
