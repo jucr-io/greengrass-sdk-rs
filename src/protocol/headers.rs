@@ -3,29 +3,32 @@ use std::{borrow::Cow, collections::HashMap, io, io::Write};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Headers<'h> {
-    headers: HashMap<&'static str, Value<'h>>,
+    headers: HashMap<Cow<'h, str>, Value<'h>>,
 }
 
 impl<'h> Headers<'h> {
     pub fn new(stream_id: i32, message_type: MessageType, message_flags: MessageFlags) -> Self {
         let mut headers = HashMap::new();
-        headers.insert(":stream-id", Value::Int32(stream_id));
-        headers.insert(":message-type", Value::Int32(message_type.into()));
-        headers.insert(":message-flags", Value::Int32(message_flags as i32));
+        headers.insert(":stream-id".into(), Value::Int32(stream_id));
+        headers.insert(":message-type".into(), Value::Int32(message_type.into()));
+        headers.insert(":message-flags".into(), Value::Int32(message_flags as i32));
 
         Self { headers }
     }
 
-    pub fn insert(&mut self, name: &'static str, value: Value<'h>) {
-        self.headers.insert(name, value);
+    pub fn insert<N>(&mut self, name: N, value: Value<'h>)
+    where
+        N: Into<Cow<'h, str>>,
+    {
+        self.headers.insert(name.into(), value);
     }
 
     pub fn get(&self, name: &'static str) -> Option<&Value> {
         self.headers.get(name)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&'static str, &Value)> {
-        self.headers.iter().map(|(k, v)| (*k, v))
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &Value)> {
+        self.headers.iter().map(|(k, v)| (k.as_ref(), v))
     }
 
     /// Write into the given writer the headers in the IPC wire format.
@@ -54,7 +57,7 @@ impl<'h> Headers<'h> {
 }
 
 fn write_header_as_bytes(
-    name: &'static str,
+    name: &str,
     value: &Value<'_>,
     writer: &mut impl Write,
 ) -> io::Result<usize> {
