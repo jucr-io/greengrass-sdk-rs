@@ -1,4 +1,4 @@
-use endi::WriteBytes;
+use endi::{ReadBytes, WriteBytes};
 use std::{borrow::Cow, collections::HashMap, io, io::Write};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,6 +54,21 @@ impl<'h> Headers<'h> {
                 .and_then(|len| value.size_in_bytes().map(|v_len| len + v_len))
         })
     }
+
+    pub fn from_bytes(bytes: &mut &'h [u8], headers_len: usize) -> Result<Self, &'static str> {
+        let mut headers = Self {
+            headers: HashMap::new(),
+        };
+
+        while (headers.size_in_bytes().map_err(|_| "too large header")? as usize) < headers_len {
+            let name = read_header_name_from_bytes(bytes)?;
+            let value = Value::from_bytes(bytes)?;
+
+            headers.headers.insert(Cow::Borrowed(name), value);
+        }
+
+        Ok(headers)
+    }
 }
 
 fn write_header_as_bytes(
@@ -81,6 +96,19 @@ fn write_header_name_as_bytes(name: &str, writer: &mut impl Write) -> io::Result
     bytes_written += writer.write(name.as_bytes())?;
 
     Ok(bytes_written)
+}
+
+fn read_header_name_from_bytes<'n>(bytes: &mut &'n [u8]) -> Result<&'n str, &'static str> {
+    let len = bytes
+        .read_u16(endi::Endian::Big)
+        .map_err(|_| "Invalid header name: missing length")? as usize;
+
+    let name_bytes = bytes
+        .get(..len)
+        .ok_or("Invalid header name: missing name")?;
+    *bytes = &bytes[len..];
+
+    std::str::from_utf8(name_bytes).map_err(|_| "Invalid header name: invalid UTF-8")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -244,5 +272,83 @@ impl Value<'_> {
             Value::Timestamp(_) => 8,
             Value::Uuid(_) => 16,
         })
+    }
+}
+
+impl<'v> Value<'v> {
+    pub fn from_bytes(bytes: &mut &'v [u8]) -> Result<Self, &'static str> {
+        let r#type = bytes
+            .get(0)
+            .copied()
+            .ok_or("Invalid header value: missing type")?;
+        *bytes = &bytes[1..];
+
+        match r#type {
+            0 => Ok(Value::Bool(false)),
+            1 => Ok(Value::Bool(true)),
+            2 => bytes
+                .read_u8(endi::Endian::Big)
+                .map(Value::Byte)
+                .map_err(|_| "Invalid header value: missing byte"),
+            3 => bytes
+                .read_i16(endi::Endian::Big)
+                .map(Value::Int16)
+                .map_err(|_| "Invalid header value: missing int16"),
+            4 => bytes
+                .read_i32(endi::Endian::Big)
+                .map(Value::Int32)
+                .map_err(|_| "Invalid header value: missing int32"),
+            5 => bytes
+                .read_i64(endi::Endian::Big)
+                .map(Value::Int64)
+                .map_err(|_| "Invalid header value: missing int64"),
+            6 => {
+                let len = bytes
+                    .read_u16(endi::Endian::Big)
+                    .map_err(|_| "Invalid header value: missing byte buffer length")?
+                    as usize;
+
+                let value = bytes
+                    .get(..len)
+                    .ok_or("Invalid header value: missing byte buffer")
+                    .map(Cow::Borrowed)
+                    .map(Value::ByteBuffer)?;
+                *bytes = &bytes[len..];
+                Ok(value)
+            }
+            7 => {
+                let len = bytes
+                    .read_u16(endi::Endian::Big)
+                    .map_err(|_| "Invalid header value: missing string length")?
+                    as usize;
+
+                let value = bytes
+                    .get(..len)
+                    .ok_or("Invalid header value: missing string")
+                    .map(|slice| {
+                        let string = std::str::from_utf8(slice)
+                            .map_err(|_| "Invalid header value: invalid string")?;
+                        Ok(Value::String(Cow::Borrowed(string)))
+                    })?;
+                *bytes = &bytes[len..];
+                value
+            }
+            8 => bytes
+                .read_i64(endi::Endian::Big)
+                .map(Value::Timestamp)
+                .map_err(|_| "Invalid header value: missing timestamp"),
+            9 => {
+                let array = bytes
+                    .get(..16)
+                    .ok_or("Invalid header value: missing UUID")
+                    .map(|slice| slice.try_into().unwrap())?;
+                let value = uuid::Uuid::from_slice(array)
+                    .map(Value::Uuid)
+                    .map_err(|_| "Invalid header value: invalid UUID")?;
+                *bytes = &bytes[16..];
+                Ok(value)
+            }
+            _ => Err("Invalid header value: unknown type"),
+        }
     }
 }
