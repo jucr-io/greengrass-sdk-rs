@@ -1,9 +1,9 @@
+use crc::{Crc, CRC_32_ISO_HDLC};
+use endi::{ReadBytes, WriteBytes};
 use std::{
     env,
     io::{self, Write},
 };
-use crc::{Crc, CRC_32_ISO_HDLC};
-use endi::{ReadBytes, WriteBytes};
 
 use headers::{Headers, MessageFlags, MessageType};
 use serde_json::{from_slice, json, to_vec, Map, Value};
@@ -17,15 +17,17 @@ pub struct Message<'m> {
 }
 
 impl<'m> Message<'m> {
-    pub fn new(headers: Headers<'m>, payload: Option<Value>) -> Self
-    {
+    pub fn new(headers: Headers<'m>, payload: Option<Value>) -> Self {
         Self { headers, payload }
     }
 
     pub fn connect_request() -> io::Result<Self> {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
         headers.insert(":version", headers::Value::String("0.1.0".into()));
-        headers.insert(":content-type", headers::Value::String("application/json".into()));
+        headers.insert(
+            ":content-type",
+            headers::Value::String("application/json".into()),
+        );
         let auth_token = env::var("SVCUID").map_err(|_| io::ErrorKind::NotFound)?;
         let payload = json!({ "authToken": auth_token });
 
@@ -37,8 +39,7 @@ impl<'m> Message<'m> {
         operation: &'static str,
         stream_id: i32,
         payload: Option<Value>,
-    ) -> Self
-    {
+    ) -> Self {
         let mut headers = Headers::new(stream_id, MessageType::Application, MessageFlags::None);
         headers.insert(
             "service-model-type",
@@ -71,7 +72,10 @@ impl<'m> Message<'m> {
             payload.insert("message".into(), Value::String(name.into()));
         };
         if let Some(recheck_after_ms) = recheck_after_ms {
-            payload.insert("recheckAfterMs".into(), Value::Number(recheck_after_ms.into()));
+            payload.insert(
+                "recheckAfterMs".into(),
+                Value::Number(recheck_after_ms.into()),
+            );
         }
 
         Self::ipc_call(
@@ -87,13 +91,21 @@ impl<'m> Message<'m> {
 
         // First the prelude.
         let headers_len = self.headers.size_in_bytes()?;
-        let payload = self.payload.as_ref().map(|p| to_vec(p)).transpose()?.unwrap_or_default();
-        let payload_len: u32 = payload.len().try_into().map_err(|_| io::ErrorKind::InvalidInput)?;
+        let payload = self
+            .payload
+            .as_ref()
+            .map(|p| to_vec(p))
+            .transpose()?
+            .unwrap_or_default();
+        let payload_len: u32 = payload
+            .len()
+            .try_into()
+            .map_err(|_| io::ErrorKind::InvalidInput)?;
         let total_len =
             // 8 bytes prelude + 4 bytes CRC checksum of prelude.
-            12 + 
-            headers_len + 
-            payload_len + 
+            12 +
+            headers_len +
+            payload_len +
             // 4 bytes CRC checksum of the whole message.
             4;
 
@@ -118,12 +130,20 @@ impl<'m> Message<'m> {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let msg_checksum = crc32.checksum(&bytes[..bytes.len() - 4]);
         let prelude_checksum = crc32.checksum(&bytes[..8]);
-        let total_len = bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? as usize;
-        let headers_len = bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? as usize;
+        let total_len = bytes
+            .read_u32(endi::Endian::Big)
+            .map_err(|_| "invalid encoding")? as usize;
+        let headers_len = bytes
+            .read_u32(endi::Endian::Big)
+            .map_err(|_| "invalid encoding")? as usize;
         if total_len > u32::MAX as usize || headers_len > total_len {
             return Err("Invalid length");
         }
-        if prelude_checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
+        if prelude_checksum
+            != bytes
+                .read_u32(endi::Endian::Big)
+                .map_err(|_| "invalid encoding")?
+        {
             return Err("Invalid prelude checksum");
         }
 
@@ -137,10 +157,13 @@ impl<'m> Message<'m> {
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = total_len - 12 - headers_len - 4;
-        let payload = from_slice(&bytes[..dbg!(msg_crc_offset)])
-            .map_err(|_| "Invalid payload")?;
+        let payload = from_slice(&bytes[..dbg!(msg_crc_offset)]).map_err(|_| "Invalid payload")?;
         *bytes = &bytes[msg_crc_offset..];
-        if msg_checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
+        if msg_checksum
+            != bytes
+                .read_u32(endi::Endian::Big)
+                .map_err(|_| "invalid encoding")?
+        {
             return Err("Invalid message checksum");
         }
 
