@@ -169,7 +169,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_message_to_n_from_bytes() {
+    fn message_to_n_from_bytes() {
         let headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
         let message = Message::new(headers, "Hello, world!");
         let bytes = message.to_bytes().unwrap();
