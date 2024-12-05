@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     env,
     io::{self, Write},
 };
@@ -7,24 +6,20 @@ use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
 
 use headers::{Headers, MessageFlags, MessageType};
+use serde_json::{from_slice, json, to_vec, Map, Value};
 
 pub mod headers;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message<'m> {
     headers: Headers<'m>,
-    payload: Cow<'m, str>,
+    payload: Option<Value>,
 }
 
 impl<'m> Message<'m> {
-    pub fn new<P>(headers: Headers<'m>, payload: P) -> Self
-    where
-        P: Into<Cow<'m, str>>,
+    pub fn new(headers: Headers<'m>, payload: Option<Value>) -> Self
     {
-        Self {
-            headers,
-            payload: payload.into(),
-        }
+        Self { headers, payload }
     }
 
     pub fn connect_request() -> io::Result<Self> {
@@ -32,19 +27,17 @@ impl<'m> Message<'m> {
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
         let auth_token = env::var("SVCUID").map_err(|_| io::ErrorKind::NotFound)?;
-        let payload = format!("{{\"authToken\":\"{}\"}}", auth_token);
+        let payload = json!({ "authToken": auth_token });
 
-        Ok(Self::new(headers, payload))
+        Ok(Self::new(headers, Some(payload)))
     }
 
-    pub fn ipc_call<P>(
+    pub fn ipc_call(
         service_model_type: &'static str,
         operation: &'static str,
         stream_id: i32,
-        payload: P,
+        payload: Option<Value>,
     ) -> Self
-    where
-        P: Into<Cow<'m, str>>,
     {
         let mut headers = Headers::new(stream_id, MessageType::Application, MessageFlags::None);
         headers.insert(
@@ -61,7 +54,7 @@ impl<'m> Message<'m> {
             "aws.greengrass#SubscribeToComponentUpdatesRequest",
             "aws.greengrass#SubscribeToComponentUpdates",
             stream_id,
-            "",
+            None,
         )
     }
 
@@ -71,23 +64,21 @@ impl<'m> Message<'m> {
         component_name: Option<&str>,
         recheck_after_ms: Option<u64>,
     ) -> Self {
-        let mut payload = format!("{{\"deploymentId\":\"{deployment_id}\"");
+        let mut payload = Map::new();
+        payload.insert("deploymentId".into(), Value::String(deployment_id.into()));
+
         if let Some(name) = component_name {
-            payload.push_str(",\"message\":\"");
-            payload.push_str(name);
-            payload.push('"');
+            payload.insert("message".into(), Value::String(name.into()));
         };
         if let Some(recheck_after_ms) = recheck_after_ms {
-            payload.push_str(",\"recheckAfterMs\":");
-            payload.push_str(recheck_after_ms.to_string().as_str());
+            payload.insert("recheckAfterMs".into(), Value::Number(recheck_after_ms.into()));
         }
-        payload.push('}');
 
         Self::ipc_call(
             "aws.greengrass#DeferComponentUpdateRequest",
             "aws.greengrass#DeferComponentUpdate",
             stream_id,
-            payload,
+            Some(Value::Object(payload)),
         )
     }
 
@@ -96,7 +87,8 @@ impl<'m> Message<'m> {
 
         // First the prelude.
         let headers_len = self.headers.size_in_bytes()?;
-        let payload_len: u32 = self.payload.len().try_into().map_err(|_| io::ErrorKind::InvalidInput)?;
+        let payload = self.payload.as_ref().map(|p| to_vec(p)).transpose()?.unwrap_or_default();
+        let payload_len: u32 = payload.len().try_into().map_err(|_| io::ErrorKind::InvalidInput)?;
         let total_len =
             // 8 bytes prelude + 4 bytes CRC checksum of prelude.
             12 + 
@@ -113,7 +105,7 @@ impl<'m> Message<'m> {
 
         // Then the headers and payload.
         self.headers.write_as_bytes(&mut bytes)?;
-        bytes.write(self.payload.as_bytes())?;
+        bytes.write(&payload)?;
 
         // Finally the CRC checksum of the whole message.
         let checksum = crc32.checksum(&bytes);
@@ -145,7 +137,7 @@ impl<'m> Message<'m> {
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = total_len - 12 - headers_len - 4;
-        let payload = std::str::from_utf8(&bytes[..dbg!(msg_crc_offset)])
+        let payload = from_slice(&bytes[..dbg!(msg_crc_offset)])
             .map_err(|_| "Invalid payload")?;
         *bytes = &bytes[msg_crc_offset..];
         if msg_checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
@@ -159,7 +151,7 @@ impl<'m> Message<'m> {
         &self.headers
     }
 
-    pub fn payload(&self) -> &str {
+    pub fn payload(&self) -> &Option<Value> {
         &self.payload
     }
 }
@@ -173,12 +165,13 @@ mod tests {
     #[test]
     fn message_to_n_from_bytes() {
         let headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
-        let message = Message::new(headers, "Hello, world!");
+        let payload = Some(json!({"hello": "world"}));
+        let message = Message::new(headers, payload.clone());
         let bytes = message.to_bytes().unwrap();
         // Printing the bytes make debugging easier if the parsing fails because of a regression.
         println!("{:?}", bytes.hex_dump());
 
         let message = Message::from_bytes(&mut &bytes[..]).unwrap();
-        assert_eq!(message.payload(), "Hello, world!");
+        assert_eq!(message.payload(), &payload);
     }
 }
