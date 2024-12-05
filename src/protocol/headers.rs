@@ -55,12 +55,12 @@ impl<'h> Headers<'h> {
         })
     }
 
-    pub fn from_bytes(bytes: &mut &'h [u8], headers_len: usize) -> Result<Self, &'static str> {
+    pub fn from_bytes(bytes: &mut &'h [u8]) -> Result<Self, &'static str> {
         let mut headers = Self {
             headers: HashMap::new(),
         };
 
-        while (headers.size_in_bytes().map_err(|_| "too large header")? as usize) < headers_len {
+        while !bytes.is_empty() {
             let name = read_header_name_from_bytes(bytes)?;
             let value = Value::from_bytes(bytes)?;
 
@@ -100,9 +100,8 @@ fn write_header_name_as_bytes(name: &str, writer: &mut impl Write) -> io::Result
 
 fn read_header_name_from_bytes<'n>(bytes: &mut &'n [u8]) -> Result<&'n str, &'static str> {
     let len = bytes
-        .read_u16(endi::Endian::Big)
+        .read_u8(endi::Endian::Big)
         .map_err(|_| "Invalid header name: missing length")? as usize;
-
     let name_bytes = bytes
         .get(..len)
         .ok_or("Invalid header name: missing name")?;
@@ -195,10 +194,9 @@ impl Value<'_> {
     }
 
     fn write_as_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
-        let mut bytes_written = 0;
-
         // The type of the header value.
         writer.write_u8(endi::Endian::Big, self.r#type())?;
+        let mut bytes_written = 1;
 
         // The header value.
         match self {
@@ -253,24 +251,24 @@ impl Value<'_> {
     }
 
     pub fn size_in_bytes(&self) -> io::Result<u32> {
+        // All values have a type byte so that's why 5 bytes for i32 for example.
         Ok(match self {
             Value::Bool(_) => 0,
-            Value::Byte(_) => 1,
-            Value::Int16(_) => 2,
-            Value::Int32(_) => 4,
-            Value::Int64(_) => 8,
+            Value::Byte(_) => 2,
+            Value::Int16(_) => 3,
+            Value::Int32(_) => 5,
+            Value::Int64(_) | Value::Timestamp(_) => 9,
             Value::ByteBuffer(bytes) => bytes
                 .len()
                 .try_into()
-                .map(|len: u32| len + 2)
+                .map(|len: u32| len + 3)
                 .map_err(|_| io::ErrorKind::InvalidInput)?,
             Value::String(s) => s
                 .len()
                 .try_into()
-                .map(|len: u32| len + 2)
+                .map(|len: u32| len + 3)
                 .map_err(|_| io::ErrorKind::InvalidInput)?,
-            Value::Timestamp(_) => 8,
-            Value::Uuid(_) => 16,
+            Value::Uuid(_) => 17,
         })
     }
 }

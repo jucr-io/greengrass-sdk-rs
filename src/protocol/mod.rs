@@ -124,31 +124,31 @@ impl<'m> Message<'m> {
 
     pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self, &'static str> {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
-        let checksum = crc32.checksum(&bytes[..8]);
+        let msg_checksum = crc32.checksum(&bytes[..bytes.len() - 4]);
+        let prelude_checksum = crc32.checksum(&bytes[..8]);
         let total_len = bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? as usize;
         let headers_len = bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? as usize;
         if total_len > u32::MAX as usize || headers_len > total_len {
             return Err("Invalid length");
         }
-        if checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
+        if prelude_checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
             return Err("Invalid prelude checksum");
         }
 
-        let headers = Headers::from_bytes(bytes, headers_len)?;
+        let headers = Headers::from_bytes(&mut &bytes[..headers_len])?;
         // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and `from_bytes`
         // ensures that it is not.
         if headers.size_in_bytes().unwrap() as usize != headers_len {
-            println!("headers expected size: {}", headers.size_in_bytes().unwrap());
-            println!("headers size: {}", headers_len);
             return Err("Invalid headers length");
         }
+        *bytes = &bytes[headers_len..];
+
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
-        let msg_crc_offset = total_len - 12 - headers_len;
-        let payload = std::str::from_utf8(&bytes[..msg_crc_offset])
+        let msg_crc_offset = total_len - 12 - headers_len - 4;
+        let payload = std::str::from_utf8(&bytes[..dbg!(msg_crc_offset)])
             .map_err(|_| "Invalid payload")?;
         *bytes = &bytes[msg_crc_offset..];
-        let checksum = crc32.checksum(&bytes);
-        if checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
+        if msg_checksum != bytes.read_u32(endi::Endian::Big).map_err(|_| "invalid encoding")? {
             return Err("Invalid message checksum");
         }
 
