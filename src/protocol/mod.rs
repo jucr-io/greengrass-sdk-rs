@@ -166,6 +166,8 @@ impl<'m> Message<'m> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_hex::PrettyHex;
+
     use super::*;
 
     #[test]
@@ -173,8 +175,10 @@ mod tests {
         let headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
         let message = Message::new(headers, "Hello, world!");
         let bytes = message.to_bytes().unwrap();
-        let mut bytes = &bytes[..];
-        let message = Message::from_bytes(&mut bytes).unwrap();
+        // Printing the bytes make debugging easier if the parsing fails because of a regression.
+        println!("{:?}", bytes.hex_dump());
+
+        let message = Message::from_bytes(&mut &bytes[..]).unwrap();
         assert_eq!(message.payload(), "Hello, world!");
     }
 }
