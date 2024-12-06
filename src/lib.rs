@@ -1,3 +1,4 @@
+mod connection;
 pub mod protocol;
 
 use std::sync::{Arc, Mutex};
