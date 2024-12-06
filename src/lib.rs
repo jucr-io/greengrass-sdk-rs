@@ -1,77 +1,106 @@
 mod connection;
 pub mod protocol;
 
-use std::sync::{Arc, Mutex};
-use tokio::{
-    sync::{
-        mpsc::{Receiver, Sender},
-        Mutex as AsyncMutex,
-    },
-    task::JoinHandle,
+use connection::Connection;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
 };
+use tokio::task::JoinHandle;
+use tracing::{debug, error, trace, warn};
 
 pub struct IpcClient {
-    inner: Arc<IpcClientInner>,
-}
-
-struct IpcClientInner {
-    _component_update_event_tx: Sender<()>,
-    component_update_event_rx: AsyncMutex<Receiver<()>>,
-    pause_component_update_task: Mutex<Option<JoinHandle<()>>>,
+    _conn: Connection,
+    component_update_task: JoinHandle<()>,
+    paused: Arc<AtomicBool>,
 }
 
 impl IpcClient {
-    pub fn new_connected() -> Result<IpcClient, String> {
-        let client = IpcClient::new();
+    pub async fn new() -> std::io::Result<Self> {
+        let conn = Connection::new().await?;
+        let paused = Arc::new(AtomicBool::new(false));
 
-        client.connect().map(|_| client)
+        // Create a separate connection for component update subscription.
+        let mut stream_conn = Connection::new().await?;
+        let stream_id = stream_conn.subscribe_to_component_updates().await?;
+        let paused_clone = paused.clone();
+        let component_update_task = tokio::spawn(async move {
+            loop {
+                trace!("Waiting for the next component update event..");
+                let update = match stream_conn.read_response(stream_id).await {
+                    Ok(update) => update,
+                    Err(e) => {
+                        // FIXME: We need better error handling here and better way to differentiate
+                        //        between recoverable and non-recoverable errors.
+                        error!("{e}");
+                        break;
+                    }
+                };
+                trace!("Received component update: {update:?}");
+
+                let paused = paused_clone.load(Ordering::Relaxed);
+                if !paused {
+                    debug!("component update not paused. Not deferring it..");
+                    continue;
+                }
+
+                let messages = match update
+                    .payload()
+                    .as_ref()
+                    .and_then(|p| p.get("messages"))
+                    .and_then(|m| m.as_object())
+                {
+                    Some(m) => m,
+                    None => {
+                        warn!("Received component update without (expected) payload");
+                        continue;
+                    }
+                };
+                let deployment_id = match messages
+                    .get("preUpdateEvent")
+                    .and_then(|m| m.as_object())
+                    .and_then(|e| e.get("deploymentId"))
+                    .and_then(|d| d.as_str())
+                {
+                    Some(d) => d.to_string(),
+                    None => {
+                        continue;
+                    }
+                };
+                drop(update);
+
+                if let Err(e) = stream_conn
+                    .defer_component_update(
+                        &deployment_id,
+                        None,
+                        Some(DEFER_COMPONENT_UPDATE_TIMEOUT_MS),
+                    )
+                    .await
+                {
+                    error!("Error deferring component update: {:?}", e);
+                }
+            }
+        });
+
+        Ok(Self {
+            _conn: conn,
+            component_update_task,
+            paused,
+        })
     }
 
     pub fn pause_component_update(&self) {
-        let inner = self.inner.clone();
-        self.inner
-            .pause_component_update_task
-            .lock()
-            .unwrap()
-            .get_or_insert(tokio::spawn(async move {
-                loop {
-                    let _ = inner.component_update_event_rx.lock().await.recv().await;
-
-                    // TODO: Implement deferring of component update.
-                    let _ = DEFER_COMPONENT_UPDATE_TIMEOUT_MS;
-                }
-            }));
+        self.paused.store(true, Ordering::Relaxed);
     }
 
     pub fn resume_component_update(&self) {
-        if let Some(handle) = self
-            .inner
-            .pause_component_update_task
-            .lock()
-            .unwrap()
-            .take()
-        {
-            handle.abort();
-        }
+        self.paused.store(false, Ordering::Relaxed);
     }
+}
 
-    fn new() -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(1);
-        Self {
-            inner: Arc::new(IpcClientInner {
-                _component_update_event_tx: tx,
-                component_update_event_rx: AsyncMutex::new(rx),
-                pause_component_update_task: Mutex::new(None),
-            }),
-        }
-    }
-
-    fn connect(&self) -> Result<(), String> {
-        // TODO:
-        // 1. Connection to the IPC server over the unix socket.
-        // 2. Subscribe to the component update event in a task, passing it the sender.
-
-        unimplemented!();
+impl Drop for IpcClient {
+    fn drop(&mut self) {
+        self.component_update_task.abort();
     }
 }
 
