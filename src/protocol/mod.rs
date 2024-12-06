@@ -6,9 +6,11 @@ use std::{
 };
 
 use headers::{Headers, MessageFlags, MessageType};
+use prelude::Prelude;
 use serde_json::{from_slice, json, to_vec, Map, Value};
 
 pub mod headers;
+pub mod prelude;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message<'m> {
@@ -109,17 +111,15 @@ impl<'m> Message<'m> {
             // 4 bytes CRC checksum of the whole message.
             4;
 
-        bytes.write_u32(endi::Endian::Big, total_len)?;
-        bytes.write_u32(endi::Endian::Big, headers_len)?;
-        let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
-        let checksum = crc32.checksum(&bytes);
-        bytes.write_u32(endi::Endian::Big, checksum)?;
+        let prelude = Prelude::new(total_len as usize, headers_len as usize)?;
+        prelude.write_as_bytes(&mut bytes)?;
 
         // Then the headers and payload.
         self.headers.write_as_bytes(&mut bytes)?;
         bytes.write(&payload)?;
 
         // Finally the CRC checksum of the whole message.
+        let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let checksum = crc32.checksum(&bytes);
         bytes.write_u32(endi::Endian::Big, checksum)?;
 
@@ -129,34 +129,18 @@ impl<'m> Message<'m> {
     pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self, &'static str> {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let msg_checksum = crc32.checksum(&bytes[..bytes.len() - 4]);
-        let prelude_checksum = crc32.checksum(&bytes[..8]);
-        let total_len = bytes
-            .read_u32(endi::Endian::Big)
-            .map_err(|_| "invalid encoding")? as usize;
-        let headers_len = bytes
-            .read_u32(endi::Endian::Big)
-            .map_err(|_| "invalid encoding")? as usize;
-        if total_len > u32::MAX as usize || headers_len > total_len {
-            return Err("Invalid length");
-        }
-        if prelude_checksum
-            != bytes
-                .read_u32(endi::Endian::Big)
-                .map_err(|_| "invalid encoding")?
-        {
-            return Err("Invalid prelude checksum");
-        }
+        let prelude = Prelude::from_bytes(bytes).map_err(|_| "Invalid prelude")?;
 
-        let headers = Headers::from_bytes(&mut &bytes[..headers_len])?;
+        let headers = Headers::from_bytes(&mut &bytes[..prelude.headers_len()])?;
         // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and `from_bytes`
         // ensures that it is not.
-        if headers.size_in_bytes().unwrap() as usize != headers_len {
+        if headers.size_in_bytes().unwrap() as usize != prelude.headers_len() {
             return Err("Invalid headers length");
         }
-        *bytes = &bytes[headers_len..];
+        *bytes = &bytes[prelude.headers_len()..];
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
-        let msg_crc_offset = total_len - 12 - headers_len - 4;
+        let msg_crc_offset = prelude.total_len() - 12 - prelude.headers_len() - 4;
         let payload = from_slice(&bytes[..dbg!(msg_crc_offset)]).map_err(|_| "Invalid payload")?;
         *bytes = &bytes[msg_crc_offset..];
         if msg_checksum
