@@ -126,29 +126,37 @@ impl<'m> Message<'m> {
         Ok(bytes)
     }
 
-    pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self, &'static str> {
+    pub fn from_bytes(bytes: &mut &'m [u8]) -> io::Result<Self> {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let msg_checksum = crc32.checksum(&bytes[..bytes.len() - 4]);
-        let prelude = Prelude::from_bytes(bytes).map_err(|_| "Invalid prelude")?;
+        let prelude = Prelude::from_bytes(bytes)
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid prelude"))?;
 
         let headers = Headers::from_bytes(&mut &bytes[..prelude.headers_len()])?;
         // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and `from_bytes`
         // ensures that it is not.
         if headers.size_in_bytes().unwrap() as usize != prelude.headers_len() {
-            return Err("Invalid headers length");
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid prelude",
+            ));
         }
         *bytes = &bytes[prelude.headers_len()..];
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = prelude.total_len() - 12 - prelude.headers_len() - 4;
-        let payload = from_slice(&bytes[..dbg!(msg_crc_offset)]).map_err(|_| "Invalid payload")?;
+        let payload = from_slice(&bytes[..dbg!(msg_crc_offset)])
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid payload"))?;
         *bytes = &bytes[msg_crc_offset..];
         if msg_checksum
             != bytes
                 .read_u32(endi::Endian::Big)
-                .map_err(|_| "invalid encoding")?
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid encoding"))?
         {
-            return Err("Invalid message checksum");
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid message checksum",
+            ));
         }
 
         Ok(Self::new(headers, payload))
