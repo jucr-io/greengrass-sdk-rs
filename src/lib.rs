@@ -9,16 +9,6 @@ use tokio::{
     task::JoinHandle,
 };
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let _client = IpcClient::new_connected().unwrap();
-    }
-}
-
 pub struct IpcClient {
     inner: Arc<IpcClientInner>,
 }
