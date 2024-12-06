@@ -169,6 +169,13 @@ impl<'m> Message<'m> {
     pub fn payload(&self) -> &Option<Value> {
         &self.payload
     }
+
+    pub fn to_owned(&self) -> Message<'static> {
+        Message {
+            headers: self.headers.to_owned(),
+            payload: self.payload.clone(),
+        }
+    }
 }
 
 #[cfg(test)]

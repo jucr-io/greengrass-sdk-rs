@@ -69,6 +69,16 @@ impl<'h> Headers<'h> {
 
         Ok(headers)
     }
+
+    pub fn to_owned(&self) -> Headers<'static> {
+        let headers = self
+            .headers
+            .iter()
+            .map(|(k, v)| (Cow::Owned(k.to_string()), v.to_owned()))
+            .collect();
+
+        Headers { headers }
+    }
 }
 
 fn write_header_as_bytes(
@@ -281,6 +291,20 @@ impl Value<'_> {
                 .map_err(|_| io::ErrorKind::InvalidInput)?,
             Value::Uuid(_) => 17,
         })
+    }
+
+    pub fn to_owned(&self) -> Value<'static> {
+        match self {
+            Value::Bool(b) => Value::Bool(*b),
+            Value::Byte(b) => Value::Byte(*b),
+            Value::Int16(i) => Value::Int16(*i),
+            Value::Int32(i) => Value::Int32(*i),
+            Value::Int64(i) => Value::Int64(*i),
+            Value::ByteBuffer(bytes) => Value::ByteBuffer(Cow::Owned(bytes.to_vec())),
+            Value::String(s) => Value::String(Cow::Owned(s.to_string())),
+            Value::Timestamp(ts) => Value::Timestamp(*ts),
+            Value::Uuid(uuid) => Value::Uuid(*uuid),
+        }
     }
 }
 
