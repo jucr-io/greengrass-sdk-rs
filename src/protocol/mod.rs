@@ -26,10 +26,7 @@ impl<'m> Message<'m> {
     pub fn connect_request() -> io::Result<Self> {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
         headers.insert(":version", headers::Value::String("0.1.0".into()));
-        headers.insert(
-            ":content-type",
-            headers::Value::String("application/json".into()),
-        );
+        headers.insert(":content-type", headers::Value::String("application/json".into()));
         let auth_token = env::var("SVCUID").map_err(|_| io::ErrorKind::NotFound)?;
         let payload = json!({ "authToken": auth_token });
 
@@ -43,10 +40,7 @@ impl<'m> Message<'m> {
         payload: Option<Value>,
     ) -> Self {
         let mut headers = Headers::new(stream_id, MessageType::Application, MessageFlags::None);
-        headers.insert(
-            "service-model-type",
-            headers::Value::String(service_model_type.into()),
-        );
+        headers.insert("service-model-type", headers::Value::String(service_model_type.into()));
         headers.insert("operation", headers::Value::String(operation.into()));
 
         Self::new(headers, payload)
@@ -74,10 +68,7 @@ impl<'m> Message<'m> {
             payload.insert("message".into(), Value::String(name.into()));
         };
         if let Some(recheck_after_ms) = recheck_after_ms {
-            payload.insert(
-                "recheckAfterMs".into(),
-                Value::Number(recheck_after_ms.into()),
-            );
+            payload.insert("recheckAfterMs".into(), Value::Number(recheck_after_ms.into()));
         }
 
         Self::ipc_call(
@@ -93,16 +84,8 @@ impl<'m> Message<'m> {
 
         // First the prelude.
         let headers_len = self.headers.size_in_bytes()?;
-        let payload = self
-            .payload
-            .as_ref()
-            .map(|p| to_vec(p))
-            .transpose()?
-            .unwrap_or_default();
-        let payload_len: u32 = payload
-            .len()
-            .try_into()
-            .map_err(|_| io::ErrorKind::InvalidInput)?;
+        let payload = self.payload.as_ref().map(|p| to_vec(p)).transpose()?.unwrap_or_default();
+        let payload_len: u32 = payload.len().try_into().map_err(|_| io::ErrorKind::InvalidInput)?;
         let total_len =
             // 8 bytes prelude + 4 bytes CRC checksum of prelude.
             12 +
@@ -133,13 +116,10 @@ impl<'m> Message<'m> {
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid prelude"))?;
 
         let headers = Headers::from_bytes(&mut &bytes[..prelude.headers_len()])?;
-        // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and `from_bytes`
-        // ensures that it is not.
+        // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and
+        // `from_bytes` ensures that it is not.
         if headers.size_in_bytes().unwrap() as usize != prelude.headers_len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid prelude",
-            ));
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid prelude"));
         }
         *bytes = &bytes[prelude.headers_len()..];
 
@@ -153,10 +133,7 @@ impl<'m> Message<'m> {
                 .read_u32(endi::Endian::Big)
                 .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid encoding"))?
         {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid message checksum",
-            ));
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid message checksum"));
         }
 
         Ok(Self::new(headers, payload))
@@ -171,10 +148,7 @@ impl<'m> Message<'m> {
     }
 
     pub fn to_owned(&self) -> Message<'static> {
-        Message {
-            headers: self.headers.to_owned(),
-            payload: self.payload.clone(),
-        }
+        Message { headers: self.headers.to_owned(), payload: self.payload.clone() }
     }
 }
 

@@ -24,11 +24,7 @@ impl Connection {
             .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Env not set"))?;
         let stream = UnixStream::connect(&socket_path).await?;
 
-        let mut conn = Self {
-            socket: stream,
-            next_stream_id: 1,
-            buffer: Vec::with_capacity(1024),
-        };
+        let mut conn = Self { socket: stream, next_stream_id: 1, buffer: Vec::with_capacity(1024) };
 
         // Handshake
         let message = Message::connect_request()?;
@@ -40,10 +36,7 @@ impl Connection {
             || headers.get(":message-flags")
                 != Some(&Value::Int32(MessageFlags::ConnectionAccepted as i32))
         {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid connection response",
-            ));
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid connection response"));
         }
 
         Ok(conn)
@@ -90,26 +83,19 @@ impl Connection {
 
             if headers.get(":message-type") != Some(&Value::Int32(MessageType::Application.into()))
             {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Received error response",
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, "Received error response"));
             }
         }
     }
 
     pub async fn read_message(&mut self) -> Result<Message<'_>, io::Error> {
-        self.socket
-            .read_exact(&mut self.buffer[0..PRELUDE_SIZE])
-            .await?;
+        self.socket.read_exact(&mut self.buffer[0..PRELUDE_SIZE]).await?;
         let prelude = Prelude::from_bytes(&mut &self.buffer[0..PRELUDE_SIZE])?;
         if prelude.total_len() > self.buffer.len() {
             self.buffer.resize(prelude.total_len(), 0);
         }
 
-        self.socket
-            .read_exact(&mut self.buffer[PRELUDE_SIZE..prelude.total_len()])
-            .await?;
+        self.socket.read_exact(&mut self.buffer[PRELUDE_SIZE..prelude.total_len()]).await?;
 
         Message::from_bytes(&mut &self.buffer[0..prelude.total_len()])
     }

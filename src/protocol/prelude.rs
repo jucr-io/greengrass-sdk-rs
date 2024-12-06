@@ -24,11 +24,7 @@ impl Prelude {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let crc_checksum = crc32.checksum(&bytes);
 
-        Ok(Self {
-            total_len: total_len as usize,
-            headers_len: headers_len as usize,
-            crc_checksum,
-        })
+        Ok(Self { total_len: total_len as usize, headers_len: headers_len as usize, crc_checksum })
     }
 
     pub fn from_bytes(bytes: &mut &[u8]) -> io::Result<Self> {
@@ -43,17 +39,10 @@ impl Prelude {
         }
 
         if prelude_checksum != crc_checksum {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid prelude checksum",
-            ));
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid prelude checksum"));
         }
 
-        Ok(Self {
-            total_len: total_len as usize,
-            headers_len: headers_len as usize,
-            crc_checksum,
-        })
+        Ok(Self { total_len: total_len as usize, headers_len: headers_len as usize, crc_checksum })
     }
 
     pub fn write_as_bytes(&self, writer: &mut impl Write) -> io::Result<()> {

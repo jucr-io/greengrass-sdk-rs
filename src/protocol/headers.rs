@@ -56,9 +56,7 @@ impl<'h> Headers<'h> {
     }
 
     pub fn from_bytes(bytes: &mut &'h [u8]) -> io::Result<Self> {
-        let mut headers = Self {
-            headers: HashMap::new(),
-        };
+        let mut headers = Self { headers: HashMap::new() };
 
         while !bytes.is_empty() {
             let name = read_header_name_from_bytes(bytes)?;
@@ -71,11 +69,8 @@ impl<'h> Headers<'h> {
     }
 
     pub fn to_owned(&self) -> Headers<'static> {
-        let headers = self
-            .headers
-            .iter()
-            .map(|(k, v)| (Cow::Owned(k.to_string()), v.to_owned()))
-            .collect();
+        let headers =
+            self.headers.iter().map(|(k, v)| (Cow::Owned(k.to_string()), v.to_owned())).collect();
 
         Headers { headers }
     }
@@ -110,24 +105,15 @@ fn write_header_name_as_bytes(name: &str, writer: &mut impl Write) -> io::Result
 
 fn read_header_name_from_bytes<'n>(bytes: &mut &'n [u8]) -> io::Result<&'n str> {
     let len = bytes.read_u8(endi::Endian::Big).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Invalid header name: missing length",
-        )
+        io::Error::new(io::ErrorKind::InvalidData, "Invalid header name: missing length")
     })? as usize;
     let name_bytes = bytes.get(..len).ok_or({
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Invalid header name: missing name",
-        )
+        io::Error::new(io::ErrorKind::InvalidData, "Invalid header name: missing name")
     })?;
     *bytes = &bytes[len..];
 
     std::str::from_utf8(name_bytes).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Invalid header name: invalid UTF-8",
-        )
+        io::Error::new(io::ErrorKind::InvalidData, "Invalid header name: invalid UTF-8")
     })
 }
 
@@ -221,8 +207,8 @@ impl Value<'_> {
 
         // The header value.
         match self {
-            // No field value for booleans. The type already covers it as there are separate types for
-            // true and false.
+            // No field value for booleans. The type already covers it as there are separate types
+            // for true and false.
             Value::Bool(_) => (),
             Value::Byte(b) => {
                 writer.write_u8(endi::Endian::Big, *b)?;
@@ -311,52 +297,25 @@ impl Value<'_> {
 impl<'v> Value<'v> {
     pub fn from_bytes(bytes: &mut &'v [u8]) -> io::Result<Self> {
         let r#type = bytes.get(0).copied().ok_or({
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid header value: missing type",
-            )
+            io::Error::new(io::ErrorKind::InvalidData, "Invalid header value: missing type")
         })?;
         *bytes = &bytes[1..];
 
         match r#type {
             0 => Ok(Value::Bool(false)),
             1 => Ok(Value::Bool(true)),
-            2 => bytes
-                .read_u8(endi::Endian::Big)
-                .map(Value::Byte)
-                .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid header value: missing byte",
-                    )
-                }),
-            3 => bytes
-                .read_i16(endi::Endian::Big)
-                .map(Value::Int16)
-                .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid header value: missing int16",
-                    )
-                }),
-            4 => bytes
-                .read_i32(endi::Endian::Big)
-                .map(Value::Int32)
-                .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid header value: missing int32",
-                    )
-                }),
-            5 => bytes
-                .read_i64(endi::Endian::Big)
-                .map(Value::Int64)
-                .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid header value: missing int64",
-                    )
-                }),
+            2 => bytes.read_u8(endi::Endian::Big).map(Value::Byte).map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "Invalid header value: missing byte")
+            }),
+            3 => bytes.read_i16(endi::Endian::Big).map(Value::Int16).map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "Invalid header value: missing int16")
+            }),
+            4 => bytes.read_i32(endi::Endian::Big).map(Value::Int32).map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "Invalid header value: missing int32")
+            }),
+            5 => bytes.read_i64(endi::Endian::Big).map(Value::Int64).map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "Invalid header value: missing int64")
+            }),
             6 => {
                 let len = bytes.read_u16(endi::Endian::Big).map_err(|_| {
                     io::Error::new(
@@ -406,15 +365,12 @@ impl<'v> Value<'v> {
                 *bytes = &bytes[len..];
                 value
             }
-            8 => bytes
-                .read_i64(endi::Endian::Big)
-                .map(Value::Timestamp)
-                .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid header value: missing timestamp",
-                    )
-                }),
+            8 => bytes.read_i64(endi::Endian::Big).map(Value::Timestamp).map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid header value: missing timestamp",
+                )
+            }),
             9 => {
                 let array = bytes
                     .get(..16)
@@ -425,14 +381,9 @@ impl<'v> Value<'v> {
                         )
                     })
                     .map(|slice| slice.try_into().unwrap())?;
-                let value = uuid::Uuid::from_slice(array)
-                    .map(Value::Uuid)
-                    .map_err(|_| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Invalid header value: invalid UUID",
-                        )
-                    })?;
+                let value = uuid::Uuid::from_slice(array).map(Value::Uuid).map_err(|_| {
+                    io::Error::new(io::ErrorKind::InvalidData, "Invalid header value: invalid UUID")
+                })?;
                 *bytes = &bytes[16..];
                 Ok(value)
             }

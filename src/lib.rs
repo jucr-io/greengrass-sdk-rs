@@ -82,11 +82,7 @@ impl IpcClient {
             }
         });
 
-        Ok(Self {
-            _conn: conn,
-            component_update_task,
-            paused,
-        })
+        Ok(Self { _conn: conn, component_update_task, paused })
     }
 
     pub fn pause_component_update(&self) {
