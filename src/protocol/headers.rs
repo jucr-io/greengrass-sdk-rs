@@ -182,6 +182,20 @@ pub enum MessageFlags {
     Both = 0b11,
 }
 
+impl TryFrom<i32> for MessageFlags {
+    type Error = Error;
+
+    fn try_from(value: i32) -> Result<Self> {
+        match value {
+            0 => Ok(Self::None),
+            1 => Ok(Self::ConnectionAccepted),
+            2 => Ok(Self::TerminateStream),
+            3 => Ok(Self::Both),
+            _ => Err(Error::Protocol("Invalid message flags".into())),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'v> {
     Bool(bool),
