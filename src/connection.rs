@@ -6,7 +6,7 @@ use tokio::{
 use crate::{
     env,
     protocol::{
-        headers::{MessageFlags, MessageType, Value},
+        headers::{MessageFlags, MessageType},
         prelude::{Prelude, PRELUDE_SIZE},
         Message,
     },
@@ -77,7 +77,7 @@ impl Connection {
         loop {
             let message = self.read_message().await?;
             let headers = message.headers();
-            if headers.get(":stream-id") == Some(&Value::Int32(stream_id)) {
+            if headers.stream_id() == stream_id {
                 return Ok(message.to_owned());
             }
 
