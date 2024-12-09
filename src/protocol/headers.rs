@@ -1,5 +1,5 @@
 use endi::{ReadBytes, WriteBytes};
-use std::{borrow::Cow, collections::HashMap, io, io::Write};
+use std::{borrow::Cow, collections::HashMap, fmt::Display, io::Write};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Headers<'h> {
@@ -153,6 +153,22 @@ impl TryFrom<i32> for MessageType {
 impl From<MessageType> for i32 {
     fn from(value: MessageType) -> Self {
         value as i32
+    }
+}
+
+impl Display for MessageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            MessageType::Application => write!(f, "Application"),
+            MessageType::ApplicationError => write!(f, "ApplicationError"),
+            MessageType::Ping => write!(f, "Ping"),
+            MessageType::Pong => write!(f, "Pong"),
+            MessageType::Connect => write!(f, "Connect"),
+            MessageType::ConnectAck => write!(f, "ConnectAck"),
+            MessageType::ProtocolError => write!(f, "ProtocolError"),
+            MessageType::InternalError => write!(f, "InternalError"),
+            MessageType::Count => write!(f, "Count"),
+        }
     }
 }
 
