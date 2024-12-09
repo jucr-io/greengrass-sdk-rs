@@ -1,6 +1,6 @@
 use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
-use std::{env, io::Write};
+use std::io::Write;
 
 use headers::{Headers, MessageFlags, MessageType};
 use prelude::Prelude;
@@ -9,7 +9,7 @@ use serde_json::{from_slice, json, to_vec, Map, Value};
 pub mod headers;
 pub mod prelude;
 
-use crate::{Error, Result};
+use crate::{env, Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message<'m> {
@@ -26,7 +26,7 @@ impl<'m> Message<'m> {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
-        let auth_token = env::var("SVCUID").map_err(|_| Error::EnvVarNotSet("SVCUID"))?;
+        let auth_token = env::auth_token()?;
         let payload = json!({ "authToken": auth_token });
 
         Ok(Self::new(headers, Some(payload)))

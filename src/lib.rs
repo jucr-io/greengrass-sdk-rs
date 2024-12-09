@@ -2,6 +2,7 @@ mod connection;
 mod error;
 pub mod protocol;
 pub use error::{Error, Result};
+mod env;
 
 use connection::Connection;
 use std::sync::{

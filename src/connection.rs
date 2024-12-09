@@ -1,11 +1,10 @@
-use std::env;
-
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
 };
 
 use crate::{
+    env,
     protocol::{
         headers::{MessageFlags, MessageType, Value},
         prelude::{Prelude, PRELUDE_SIZE},
@@ -23,10 +22,7 @@ pub struct Connection {
 
 impl Connection {
     pub async fn new() -> Result<Self> {
-        let socket_path =
-            env::var("AWS_GG_NUCLEUS_DOMAIN_SOCKET_FILEPATH_FOR_COMPONENT").map_err(|_| {
-                Error::EnvVarNotSet("AWS_GG_NUCLEUS_DOMAIN_SOCKET_FILEPATH_FOR_COMPONENT")
-            })?;
+        let socket_path = env::socket_path()?;
         let stream = UnixStream::connect(&socket_path).await?;
 
         let mut conn = Self { socket: stream, next_stream_id: 1, buffer: Vec::with_capacity(1024) };
