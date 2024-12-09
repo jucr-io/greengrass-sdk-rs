@@ -1,5 +1,7 @@
 mod connection;
+mod error;
 pub mod protocol;
+pub use error::{Error, Result};
 
 use connection::Connection;
 use std::sync::{
@@ -16,7 +18,7 @@ pub struct IpcClient {
 }
 
 impl IpcClient {
-    pub async fn new() -> std::io::Result<Self> {
+    pub async fn new() -> Result<Self> {
         let conn = Connection::new().await?;
         let paused = Arc::new(AtomicBool::new(false));
 

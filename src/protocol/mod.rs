@@ -1,9 +1,6 @@
 use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
-use std::{
-    env,
-    io::{self, Write},
-};
+use std::{env, io::Write};
 
 use headers::{Headers, MessageFlags, MessageType};
 use prelude::Prelude;
@@ -11,6 +8,8 @@ use serde_json::{from_slice, json, to_vec, Map, Value};
 
 pub mod headers;
 pub mod prelude;
+
+use crate::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message<'m> {
@@ -23,11 +22,11 @@ impl<'m> Message<'m> {
         Self { headers, payload }
     }
 
-    pub fn connect_request() -> io::Result<Self> {
+    pub fn connect_request() -> Result<Self> {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
-        let auth_token = env::var("SVCUID").map_err(|_| io::ErrorKind::NotFound)?;
+        let auth_token = env::var("SVCUID").map_err(|_| Error::EnvVarNotSet("SVCUID"))?;
         let payload = json!({ "authToken": auth_token });
 
         Ok(Self::new(headers, Some(payload)))
@@ -79,13 +78,16 @@ impl<'m> Message<'m> {
         )
     }
 
-    pub fn to_bytes(&self) -> io::Result<Vec<u8>> {
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::with_capacity(1024);
 
         // First the prelude.
         let headers_len = self.headers.size_in_bytes()?;
         let payload = self.payload.as_ref().map(|p| to_vec(p)).transpose()?.unwrap_or_default();
-        let payload_len: u32 = payload.len().try_into().map_err(|_| io::ErrorKind::InvalidInput)?;
+        let payload_len: u32 = payload.len().try_into().map_err(|_| Error::BufferTooLarge {
+            size: payload.len(),
+            max_size: u32::MAX as usize,
+        })?;
         let total_len =
             // 8 bytes prelude + 4 bytes CRC checksum of prelude.
             12 +
@@ -109,31 +111,31 @@ impl<'m> Message<'m> {
         Ok(bytes)
     }
 
-    pub fn from_bytes(bytes: &mut &'m [u8]) -> io::Result<Self> {
+    pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self> {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let msg_checksum = crc32.checksum(&bytes[..bytes.len() - 4]);
-        let prelude = Prelude::from_bytes(bytes)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid prelude"))?;
+        let prelude =
+            Prelude::from_bytes(bytes).map_err(|_| Error::Protocol("Invalid prelude".into()))?;
 
         let headers = Headers::from_bytes(&mut &bytes[..prelude.headers_len()])?;
         // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and
         // `from_bytes` ensures that it is not.
         if headers.size_in_bytes().unwrap() as usize != prelude.headers_len() {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid prelude"));
+            return Err(Error::Protocol("Incorrect header length".into()));
         }
         *bytes = &bytes[prelude.headers_len()..];
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = prelude.total_len() - 12 - prelude.headers_len() - 4;
         let payload = from_slice(&bytes[..dbg!(msg_crc_offset)])
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid payload"))?;
+            .map_err(|_| Error::Protocol("Invalid payload".into()))?;
         *bytes = &bytes[msg_crc_offset..];
         if msg_checksum
             != bytes
                 .read_u32(endi::Endian::Big)
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid encoding"))?
+                .map_err(|_| Error::Protocol("Invalid encoding".into()))?
         {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid message checksum"));
+            return Err(Error::ChecksumMismatch);
         }
 
         Ok(Self::new(headers, payload))
