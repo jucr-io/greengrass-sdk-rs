@@ -78,6 +78,16 @@ impl<'m> Message<'m> {
         )
     }
 
+    pub fn update_state(stream_id: i32, state: crate::LifecycleState) -> Self {
+        let payload = json!({ "state": state });
+        Self::ipc_call(
+            "aws.greengrass#UpdateStateRequest",
+            "aws.greengrass#UpdateState",
+            stream_id,
+            Some(payload),
+        )
+    }
+
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::with_capacity(1024);
 

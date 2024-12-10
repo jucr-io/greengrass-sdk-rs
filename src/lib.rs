@@ -3,6 +3,8 @@ mod error;
 pub mod protocol;
 pub use error::{Error, Result};
 mod env;
+mod lifecycle_state;
+pub use lifecycle_state::LifecycleState;
 
 use connection::Connection;
 use std::sync::{
@@ -13,7 +15,7 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, trace, warn};
 
 pub struct IpcClient {
-    _conn: Connection,
+    conn: Connection,
     component_update_task: JoinHandle<()>,
     paused: Arc<AtomicBool>,
 }
@@ -85,7 +87,7 @@ impl IpcClient {
             }
         });
 
-        Ok(Self { _conn: conn, component_update_task, paused })
+        Ok(Self { conn, component_update_task, paused })
     }
 
     pub fn pause_component_update(&self) {
@@ -94,6 +96,10 @@ impl IpcClient {
 
     pub fn resume_component_update(&self) {
         self.paused.store(false, Ordering::Relaxed);
+    }
+
+    pub async fn update_state(&mut self, state: LifecycleState) -> Result<()> {
+        self.conn.update_state(state).await
     }
 }
 

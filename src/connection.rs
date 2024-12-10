@@ -56,14 +56,23 @@ impl Connection {
         deployment_id: &str,
         component_name: Option<&str>,
         recheck_after_ms: Option<u64>,
-    ) -> Result<i32> {
+    ) -> Result<()> {
         let id = self.next_stream_id();
         let message =
             Message::defer_component_update(id, deployment_id, component_name, recheck_after_ms);
         self.send_message(message).await?;
         let _ = self.read_response(id).await?;
 
-        Ok(id)
+        Ok(())
+    }
+
+    pub async fn update_state(&mut self, state: crate::LifecycleState) -> Result<()> {
+        let id = self.next_stream_id();
+        let message = Message::update_state(id, state);
+        self.send_message(message).await?;
+        let _ = self.read_response(id).await?;
+
+        Ok(())
     }
 
     pub async fn send_message(&mut self, message: Message<'_>) -> Result<()> {
