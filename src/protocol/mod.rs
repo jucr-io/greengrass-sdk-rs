@@ -24,7 +24,7 @@ impl<'m> Message<'m> {
     }
 
     pub fn connect_request() -> Result<Self> {
-        let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
+        let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
         let auth_token = env::auth_token()?;
@@ -39,7 +39,7 @@ impl<'m> Message<'m> {
         stream_id: i32,
         payload: Option<Value>,
     ) -> Self {
-        let mut headers = Headers::new(stream_id, MessageType::Application, MessageFlags::None);
+        let mut headers = Headers::new(stream_id, MessageType::Application, MessageFlags::none());
         headers.insert("service-model-type", headers::Value::String(service_model_type.into()));
         headers.insert("operation", headers::Value::String(operation.into()));
 
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn message_to_n_from_bytes() {
-        let headers = Headers::new(0, MessageType::Connect, MessageFlags::None);
+        let headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
         let payload = Some(json!({"hello": "world"}));
         let message = Message::new(headers, payload.clone());
         let bytes = message.to_bytes().unwrap();

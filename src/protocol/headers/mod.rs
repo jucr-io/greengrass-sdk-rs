@@ -1,4 +1,5 @@
 use endi::{ReadBytes, WriteBytes};
+use enumflags2::{BitFlag, BitFlags};
 use std::{borrow::Cow, collections::HashMap, io::Write};
 
 use crate::{Error, Result};
@@ -16,11 +17,15 @@ pub struct Headers<'h> {
 }
 
 impl<'h> Headers<'h> {
-    pub fn new(stream_id: i32, message_type: MessageType, message_flags: MessageFlags) -> Self {
+    pub fn new(
+        stream_id: i32,
+        message_type: MessageType,
+        message_flags: BitFlags<MessageFlags>,
+    ) -> Self {
         let mut headers = HashMap::new();
         headers.insert(":stream-id".into(), Value::Int32(stream_id));
         headers.insert(":message-type".into(), Value::Int32(message_type.into()));
-        headers.insert(":message-flags".into(), Value::Int32(message_flags as i32));
+        headers.insert(":message-flags".into(), Value::Int32(message_flags.bits() as i32));
 
         Self { headers }
     }
@@ -83,7 +88,8 @@ impl<'h> Headers<'h> {
             ),
             (
                 ":message-flags",
-                (&|i| MessageFlags::try_from(i).ok().map(|_| ())) as &dyn Fn(_) -> Option<()>,
+                (&|i: i32| MessageFlags::from_bits(i as u32).ok().map(|_| ()))
+                    as &dyn Fn(_) -> Option<()>,
             ),
         ] {
             if headers
@@ -129,9 +135,9 @@ impl<'h> Headers<'h> {
         }
     }
 
-    pub fn message_flags(&self) -> MessageFlags {
+    pub fn message_flags(&self) -> BitFlags<MessageFlags> {
         match self.headers.get(":message-flags").unwrap() {
-            Value::Int32(f) => MessageFlags::try_from(*f).unwrap(),
+            Value::Int32(f) => MessageFlags::from_bits(*f as u32).unwrap(),
             _ => unreachable!(),
         }
     }
