@@ -86,8 +86,8 @@ impl Connection {
         loop {
             let message = self.read_message().await?;
             let headers = message.headers();
-            if headers.stream_id() == stream_id {
-                return Ok(message.to_owned());
+            if headers.stream_id() != stream_id {
+                continue;
             }
 
             let message_type = headers.message_type();
@@ -107,6 +107,8 @@ impl Connection {
                     })
                 }
             }
+
+            return Ok(message.to_owned());
         }
     }
 
