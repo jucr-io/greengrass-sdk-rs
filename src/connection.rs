@@ -2,6 +2,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
 };
+use tracing::trace;
 
 use crate::{
     env,
@@ -78,17 +79,28 @@ impl Connection {
     pub async fn send_message(&mut self, message: Message<'_>) -> Result<()> {
         let buf = message.to_bytes()?;
 
-        self.socket.write_all(&buf).await.map_err(Error::Io)
+        self.socket.write_all(&buf).await.map_err(Error::Io)?;
+        trace!("Sent message: {message:?}");
+
+        Ok(())
     }
 
     /// Reads messages until it receives a message with the specified stream ID.
     pub async fn read_response(&mut self, stream_id: i32) -> Result<Message> {
+        trace!("Waiting for response with stream ID {stream_id}");
         loop {
             let message = self.read_message().await?;
             let headers = message.headers();
             if headers.stream_id() != stream_id {
+                trace!(
+                    "Ignoring message with stream ID {}, while awaiting for message with ID {}",
+                    headers.stream_id(),
+                    stream_id
+                );
+
                 continue;
             }
+            trace!("Received response with stream ID {stream_id}");
 
             let message_type = headers.message_type();
             match message_type {
