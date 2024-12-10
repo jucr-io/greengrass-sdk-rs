@@ -78,6 +78,7 @@ dependencies = [
  "crc",
  "endi",
  "pretty-hex",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",
