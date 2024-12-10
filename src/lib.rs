@@ -32,7 +32,7 @@ impl IpcClient {
         let component_update_task = tokio::spawn(async move {
             loop {
                 trace!("Waiting for the next component update event..");
-                let update = match stream_conn.read_response(stream_id).await {
+                let update = match stream_conn.read_response(stream_id, false).await {
                     Ok(update) => update,
                     Err(e) => {
                         // FIXME: We need better error handling here and better way to differentiate

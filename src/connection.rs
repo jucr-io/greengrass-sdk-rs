@@ -2,7 +2,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
 };
-use tracing::trace;
+use tracing::{trace, warn};
 
 use crate::{
     env,
@@ -47,7 +47,7 @@ impl Connection {
         let id = self.next_stream_id();
         let message = Message::component_updates_subcription_request(id);
         self.send_message(message).await?;
-        let _ = self.read_response(id).await?;
+        let _ = self.read_response(id, false).await?;
 
         Ok(id)
     }
@@ -62,7 +62,7 @@ impl Connection {
         let message =
             Message::defer_component_update(id, deployment_id, component_name, recheck_after_ms);
         self.send_message(message).await?;
-        let _ = self.read_response(id).await?;
+        let _ = self.read_response(id, true).await?;
 
         Ok(())
     }
@@ -71,7 +71,7 @@ impl Connection {
         let id = self.next_stream_id();
         let message = Message::update_state(id, state);
         self.send_message(message).await?;
-        let _ = self.read_response(id).await?;
+        let _ = self.read_response(id, true).await?;
 
         Ok(())
     }
@@ -86,7 +86,7 @@ impl Connection {
     }
 
     /// Reads messages until it receives a message with the specified stream ID.
-    pub async fn read_response(&mut self, stream_id: i32) -> Result<Message> {
+    pub async fn read_response(&mut self, stream_id: i32, last_response: bool) -> Result<Message> {
         trace!("Waiting for response with stream ID {stream_id}");
         loop {
             let message = self.read_message().await?;
@@ -118,6 +118,13 @@ impl Connection {
                         received: message_type,
                     })
                 }
+            }
+            let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
+            // Should we return errors here? 🤔
+            if last_response && !stream_terminated {
+                warn!("Response unexpectedly not marked as end of stream");
+            } else if !last_response && stream_terminated {
+                warn!("Unexpected end of stream");
             }
 
             return Ok(message.to_owned());
