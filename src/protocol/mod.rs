@@ -1,10 +1,11 @@
 use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
+use serde::Serialize;
 use std::io::Write;
 
 use headers::{Headers, MessageFlags, MessageType};
 use prelude::Prelude;
-use serde_json::{from_slice, json, to_vec, Map, Value};
+use serde_json::{from_slice, json, to_value, to_vec, Value};
 
 pub mod headers;
 pub mod prelude;
@@ -60,26 +61,39 @@ impl<'m> Message<'m> {
         component_name: Option<&str>,
         recheck_after_ms: Option<u64>,
     ) -> Self {
-        let mut payload = Map::new();
-        payload.insert("deploymentId".into(), Value::String(deployment_id.into()));
-
-        if let Some(name) = component_name {
-            payload.insert("message".into(), Value::String(name.into()));
-        };
-        if let Some(recheck_after_ms) = recheck_after_ms {
-            payload.insert("recheckAfterMs".into(), Value::Number(recheck_after_ms.into()));
+        #[derive(Serialize)]
+        struct DeferComponentUpdateRequest<'a> {
+            #[serde(rename = "deploymentId")]
+            deployment_id: &'a str,
+            #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
+            message: Option<&'a str>,
+            #[serde(rename = "recheckAfterMs", skip_serializing_if = "Option::is_none")]
+            recheck_after_ms: Option<u64>,
         }
+
+        let payload = to_value(DeferComponentUpdateRequest {
+            deployment_id,
+            message: component_name,
+            recheck_after_ms,
+        })
+        .unwrap();
 
         Self::ipc_call(
             "aws.greengrass#DeferComponentUpdateRequest",
             "aws.greengrass#DeferComponentUpdate",
             stream_id,
-            Some(Value::Object(payload)),
+            Some(payload),
         )
     }
 
     pub fn update_state(stream_id: i32, state: crate::LifecycleState) -> Self {
-        let payload = json!({ "state": state });
+        #[derive(Serialize)]
+        struct UpdateStateRequest {
+            #[serde(rename = "state")]
+            state: crate::LifecycleState,
+        }
+        let payload = to_value(UpdateStateRequest { state }).unwrap();
+
         Self::ipc_call(
             "aws.greengrass#UpdateStateRequest",
             "aws.greengrass#UpdateState",
