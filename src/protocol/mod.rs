@@ -2,6 +2,7 @@ use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
 use serde::Serialize;
 use std::io::Write;
+use tracing::trace;
 
 use headers::{Headers, MessageFlags, MessageType};
 use prelude::Prelude;
@@ -136,23 +137,27 @@ impl<'m> Message<'m> {
     }
 
     pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self> {
+        trace!("Parsing message from bytes: {:02X?}", bytes);
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let msg_checksum = crc32.checksum(&bytes[..bytes.len() - 4]);
         let prelude =
             Prelude::from_bytes(bytes).map_err(|_| Error::Protocol("Invalid prelude".into()))?;
 
+        trace!("Prelede: {:?}", prelude);
         let headers = Headers::from_bytes(&mut &bytes[..prelude.headers_len()])?;
         // The `unwrap` call here can only panic if the headers length is > `u32::MAX` and
         // `from_bytes` ensures that it is not.
         if headers.size_in_bytes().unwrap() as usize != prelude.headers_len() {
             return Err(Error::Protocol("Incorrect header length".into()));
         }
+        trace!("Headers: {:?}", headers);
         *bytes = &bytes[prelude.headers_len()..];
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = prelude.total_len() - 12 - prelude.headers_len() - 4;
         let payload = from_slice(&bytes[..dbg!(msg_crc_offset)])
-            .map_err(|_| Error::Protocol("Invalid payload".into()))?;
+            .map_err(|e| Error::Protocol(format!("Invalid payload: {e}")))?;
+        trace!("Payload: {:?}", payload);
         *bytes = &bytes[msg_crc_offset..];
         if msg_checksum
             != bytes
@@ -161,6 +166,7 @@ impl<'m> Message<'m> {
         {
             return Err(Error::ChecksumMismatch);
         }
+        trace!("Succesfully parsed message");
 
         Ok(Self::new(headers, payload))
     }
