@@ -26,8 +26,7 @@ impl Connection {
         let socket_path = env::socket_path()?;
         let stream = UnixStream::connect(&socket_path).await?;
 
-        let mut conn = Self { socket: stream, next_stream_id: 1, buffer: Vec::with_capacity(1024) };
-        conn.buffer.extend(&[0; 1024]);
+        let mut conn = Self { socket: stream, next_stream_id: 1, buffer: Vec::from([0; 1024]) };
 
         // Handshake
         let message = Message::connect_request()?;
