@@ -33,11 +33,13 @@ impl Connection {
         conn.send_message(message).await?;
         let response = conn.read_message().await?;
         let headers = response.headers();
-        if headers.stream_id() != 0
-            || headers.message_type() != MessageType::ConnectAck
-            || headers.message_flags() != MessageFlags::ConnectionAccepted
-        {
+        if headers.stream_id() != 0 || headers.message_type() != MessageType::ConnectAck {
             return Err(Error::Protocol("Invalid connection response".into()));
+        }
+        if !headers.message_flags().contains(MessageFlags::ConnectionAccepted) {
+            return Err(Error::Protocol(
+                "Greengrass IPC server rejected connection request".into(),
+            ));
         }
 
         Ok(conn)
