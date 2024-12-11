@@ -155,8 +155,12 @@ impl<'m> Message<'m> {
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = prelude.total_len() - 12 - prelude.headers_len() - 4;
-        let payload = from_slice(&bytes[..dbg!(msg_crc_offset)])
-            .map_err(|e| Error::Protocol(format!("Invalid payload: {e}")))?;
+        let payload = if msg_crc_offset != 0 {
+            from_slice(&bytes[..dbg!(msg_crc_offset)])
+                .map_err(|e| Error::Protocol(format!("Invalid payload: {e}")))?
+        } else {
+            None
+        };
         trace!("Payload: {:?}", payload);
         *bytes = &bytes[msg_crc_offset..];
         if msg_checksum
