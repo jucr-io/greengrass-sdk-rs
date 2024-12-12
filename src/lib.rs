@@ -39,6 +39,7 @@ impl IpcClient {
                         // FIXME: We need better error handling here and better way to differentiate
                         //        between recoverable and non-recoverable errors.
                         error!("{e}");
+
                         break;
                     }
                 };
@@ -53,6 +54,7 @@ impl IpcClient {
                     Some(m) => m,
                     None => {
                         warn!("Received component update without (expected) payload");
+
                         continue;
                     }
                 };
