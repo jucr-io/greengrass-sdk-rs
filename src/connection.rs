@@ -37,9 +37,7 @@ impl Connection {
             return Err(Error::Protocol("Invalid connection response".into()));
         }
         if !headers.message_flags().contains(MessageFlags::ConnectionAccepted) {
-            return Err(Error::Protocol(
-                "Greengrass IPC server rejected connection request".into(),
-            ));
+            return Err(Error::ConnectionRefused);
         }
 
         Ok(conn)

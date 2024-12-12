@@ -17,6 +17,7 @@ pub enum Error {
     BufferTooLarge { size: usize, max_size: usize },
     EnvVarNotSet(&'static str),
     ChecksumMismatch,
+    ConnectionRefused,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -56,6 +57,7 @@ impl Display for Error {
             }
             Self::EnvVarNotSet(var) => write!(f, "Environment variable `{var}` not set"),
             Self::ChecksumMismatch => write!(f, "Checksum mismatch"),
+            Self::ConnectionRefused => write!(f, "Connection refused by the server"),
         }
     }
 }
