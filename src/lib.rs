@@ -8,7 +8,7 @@ pub use lifecycle_state::LifecycleState;
 
 use connection::Connection;
 use tokio::task::JoinHandle;
-use tracing::{error, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 pub struct IpcClient {
     conn: Connection,
@@ -66,6 +66,8 @@ impl IpcClient {
                 {
                     Some(d) => d.to_string(),
                     None => {
+                        debug!("No `preUpdateEvent` in the update, ignoring..");
+
                         continue;
                     }
                 };
