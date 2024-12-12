@@ -86,10 +86,12 @@ impl IpcClient {
         Ok(())
     }
 
-    pub fn resume_component_update(&mut self) {
+    pub async fn resume_component_update(&mut self) -> Result<()> {
         if let Some(handle) = self.component_update_task.take() {
             handle.abort();
         }
+
+        Ok(())
     }
 
     pub async fn update_state(&mut self, state: LifecycleState) -> Result<()> {
