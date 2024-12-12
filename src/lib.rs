@@ -33,14 +33,20 @@ impl IpcClient {
         let component_update_task = tokio::spawn(async move {
             loop {
                 trace!("Waiting for the next component update event..");
-                let update = match stream_conn.read_response(stream_id, false).await {
+                let res = stream_conn.read_response(stream_id, false).await;
+                let update = match res {
                     Ok(update) => update,
-                    Err(e) => {
-                        // FIXME: We need better error handling here and better way to differentiate
-                        //        between recoverable and non-recoverable errors.
+                    Err(e @ Error::Io(_))
+                    | Err(e @ Error::InternalServer(_))
+                    | Err(e @ Error::Protocol(_)) => {
                         error!("{e}");
 
                         break;
+                    }
+                    Err(e) => {
+                        warn!("{e}");
+
+                        continue;
                     }
                 };
                 trace!("Received component update: {update:?}");
