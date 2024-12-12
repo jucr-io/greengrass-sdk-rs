@@ -7,28 +7,29 @@ mod lifecycle_state;
 pub use lifecycle_state::LifecycleState;
 
 use connection::Connection;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
 use tokio::task::JoinHandle;
-use tracing::{debug, error, trace, warn};
+use tracing::{error, trace, warn};
 
 pub struct IpcClient {
     conn: Connection,
-    component_update_task: JoinHandle<()>,
-    paused: Arc<AtomicBool>,
+    component_update_task: Option<JoinHandle<()>>,
 }
 
 impl IpcClient {
     pub async fn new() -> Result<Self> {
         let conn = Connection::new().await?;
-        let paused = Arc::new(AtomicBool::new(false));
+
+        Ok(Self { conn, component_update_task: None })
+    }
+
+    pub async fn pause_component_update(&mut self) -> Result<()> {
+        if self.component_update_task.is_some() {
+            return Ok(());
+        }
 
         // Create a separate connection for component update subscription.
         let mut stream_conn = Connection::new().await?;
         let stream_id = stream_conn.subscribe_to_component_updates().await?;
-        let paused_clone = paused.clone();
         let component_update_task = tokio::spawn(async move {
             loop {
                 trace!("Waiting for the next component update event..");
@@ -42,12 +43,6 @@ impl IpcClient {
                     }
                 };
                 trace!("Received component update: {update:?}");
-
-                let paused = paused_clone.load(Ordering::Relaxed);
-                if !paused {
-                    debug!("component update not paused. Not deferring it..");
-                    continue;
-                }
 
                 let messages = match update
                     .payload()
@@ -86,16 +81,15 @@ impl IpcClient {
                 }
             }
         });
+        assert!(self.component_update_task.replace(component_update_task).is_none());
 
-        Ok(Self { conn, component_update_task, paused })
-    }
-
-    pub fn pause_component_update(&mut self) {
-        self.paused.store(true, Ordering::Relaxed);
+        Ok(())
     }
 
     pub fn resume_component_update(&mut self) {
-        self.paused.store(false, Ordering::Relaxed);
+        if let Some(handle) = self.component_update_task.take() {
+            handle.abort();
+        }
     }
 
     pub async fn update_state(&mut self, state: LifecycleState) -> Result<()> {
@@ -105,7 +99,9 @@ impl IpcClient {
 
 impl Drop for IpcClient {
     fn drop(&mut self) {
-        self.component_update_task.abort();
+        if let Some(handle) = self.component_update_task.take() {
+            handle.abort();
+        }
     }
 }
 
