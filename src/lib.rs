@@ -90,11 +90,11 @@ impl IpcClient {
         Ok(Self { conn, component_update_task, paused })
     }
 
-    pub fn pause_component_update(&self) {
+    pub fn pause_component_update(&mut self) {
         self.paused.store(true, Ordering::Relaxed);
     }
 
-    pub fn resume_component_update(&self) {
+    pub fn resume_component_update(&mut self) {
         self.paused.store(false, Ordering::Relaxed);
     }
 
