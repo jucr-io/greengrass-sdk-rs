@@ -34,7 +34,7 @@ impl<'m> DeferComponentUpdateRequest<'m> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ComponentUpdateSubscriptionRequest(());
+pub struct ComponentUpdateSubscriptionRequest {}
 
 impl<'m> ComponentUpdateSubscriptionRequest {
     pub fn new(stream_id: i32) -> Message<'m, Self> {
