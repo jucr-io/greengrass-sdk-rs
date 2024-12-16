@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
@@ -14,8 +13,8 @@ use crate::{
         headers::{MessageFlags, MessageType},
         message::{
             component_update::{
-                ComponentUpdateSubscriptionRequest, DeferComponentUpdateRequest,
-                DeferComponentUpdateResponse,
+                ComponentUpdateSubscriptionRequest, ComponentUpdateSubscriptionResponse,
+                DeferComponentUpdateRequest, DeferComponentUpdateResponse,
             },
             handshake::{ConnectRequest, ConnectResponse},
             state::{UpdateStateRequest, UpdateStateResponse},
@@ -42,8 +41,7 @@ impl Connection {
 
         // Handshake
         let message = ConnectRequest::new()?;
-        conn.send_message(message).await?;
-        let response = conn.read_response::<ConnectResponse>(0, true).await?;
+        let response = conn.call::<_, ConnectResponse>(message, true).await?;
         let headers = response.headers();
         if headers.message_type() != MessageType::ConnectAck {
             return Err(Error::Protocol("Invalid connection response".into()));
@@ -58,8 +56,7 @@ impl Connection {
     pub async fn subscribe_to_component_updates(&mut self) -> Result<i32> {
         let id = self.next_stream_id();
         let message = ComponentUpdateSubscriptionRequest::new(id);
-        self.send_message(message).await?;
-        let _ = self.read_response::<Value>(id, false).await?;
+        let _ = self.call::<_, ComponentUpdateSubscriptionResponse>(message, false).await?;
 
         Ok(id)
     }
@@ -73,8 +70,7 @@ impl Connection {
         let id = self.next_stream_id();
         let message =
             DeferComponentUpdateRequest::new(id, deployment_id, component_name, recheck_after_ms);
-        self.send_message(message).await?;
-        let _ = self.read_response::<DeferComponentUpdateResponse>(id, true).await?;
+        let _ = self.call::<_, DeferComponentUpdateResponse>(message, true).await?;
 
         Ok(())
     }
@@ -82,10 +78,24 @@ impl Connection {
     pub async fn update_state(&mut self, state: crate::LifecycleState) -> Result<()> {
         let id = self.next_stream_id();
         let message = UpdateStateRequest::new(id, state);
-        self.send_message(message).await?;
-        let _ = self.read_response::<UpdateStateResponse>(id, true).await?;
+        let _ = self.call::<_, UpdateStateResponse>(message, true).await?;
 
         Ok(())
+    }
+
+    pub async fn call<'c, RequestPayload, ResponsePayload>(
+        &'c mut self,
+        request: Message<'_, RequestPayload>,
+        last_response: bool,
+    ) -> Result<Message<'c, ResponsePayload>>
+    where
+        RequestPayload: Serialize + Debug,
+        ResponsePayload: Deserialize<'c> + Debug,
+    {
+        let stream_id = request.headers().stream_id();
+        self.send_message(request).await?;
+
+        self.read_response(stream_id, last_response).await
     }
 
     pub async fn send_message<Payload>(&mut self, message: Message<'_, Payload>) -> Result<()>
