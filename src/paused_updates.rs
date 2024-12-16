@@ -1,5 +1,6 @@
 pub use crate::{connection::Connection, Error, Result};
 
+use serde_json::Value;
 use tracing::{debug, error, trace, warn};
 
 pub struct PausedUpdates {
@@ -39,7 +40,7 @@ impl PausedUpdates {
             let messages = match update
                 .payload()
                 .as_ref()
-                .and_then(|p| p.get("messages"))
+                .and_then(|p: &Value| p.get("messages"))
                 .and_then(|m| m.as_object())
             {
                 Some(m) => m,

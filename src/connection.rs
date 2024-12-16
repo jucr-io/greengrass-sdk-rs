@@ -1,3 +1,7 @@
+use std::fmt::Debug;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
@@ -31,7 +35,7 @@ impl Connection {
         // Handshake
         let message = Message::connect_request()?;
         conn.send_message(message).await?;
-        let response = conn.read_message().await?;
+        let response = conn.read_message::<Value>().await?;
         let headers = response.headers();
         if headers.stream_id() != 0 || headers.message_type() != MessageType::ConnectAck {
             return Err(Error::Protocol("Invalid connection response".into()));
@@ -47,7 +51,7 @@ impl Connection {
         let id = self.next_stream_id();
         let message = Message::component_updates_subcription_request(id);
         self.send_message(message).await?;
-        let _ = self.read_response(id, false).await?;
+        let _ = self.read_response::<Value>(id, false).await?;
 
         Ok(id)
     }
@@ -62,7 +66,7 @@ impl Connection {
         let message =
             Message::defer_component_update(id, deployment_id, component_name, recheck_after_ms);
         self.send_message(message).await?;
-        let _ = self.read_response(id, true).await?;
+        let _ = self.read_response::<Value>(id, true).await?;
 
         Ok(())
     }
@@ -71,12 +75,15 @@ impl Connection {
         let id = self.next_stream_id();
         let message = Message::update_state(id, state);
         self.send_message(message).await?;
-        let _ = self.read_response(id, true).await?;
+        let _ = self.read_response::<Value>(id, true).await?;
 
         Ok(())
     }
 
-    pub async fn send_message(&mut self, message: Message<'_>) -> Result<()> {
+    pub async fn send_message<Payload>(&mut self, message: Message<'_, Payload>) -> Result<()>
+    where
+        Payload: Serialize + Debug,
+    {
         let buf = message.to_bytes()?;
 
         self.socket.write_all(&buf).await.map_err(Error::Io)?;
@@ -86,52 +93,61 @@ impl Connection {
     }
 
     /// Reads messages until it receives a message with the specified stream ID.
-    pub async fn read_response(&mut self, stream_id: i32, last_response: bool) -> Result<Message> {
+    pub async fn read_response<'c, Payload>(
+        &'c mut self,
+        stream_id: i32,
+        last_response: bool,
+    ) -> Result<Message<'c, Payload>>
+    where
+        Payload: Deserialize<'c> + Debug + ToString,
+    {
         trace!("Waiting for response with stream ID {stream_id}");
-        loop {
-            let message = self.read_message().await?;
-            let headers = message.headers();
-            if headers.stream_id() != stream_id {
-                trace!(
-                    "Ignoring message with stream ID {}, while awaiting for message with ID {}",
-                    headers.stream_id(),
-                    stream_id
-                );
-
-                continue;
-            }
-            trace!("Received response with stream ID {stream_id}");
-
-            let message_type = headers.message_type();
-            match message_type {
-                MessageType::Application => (),
-                MessageType::ApplicationError => {
-                    return Err(Error::Application(
-                        message.payload().as_ref().map(ToString::to_string).unwrap_or_default(),
-                    ))
-                }
-                // We already established above that the message belong to the stream ID we're
-                // interested in so the message type must match here.
-                _ => {
-                    return Err(Error::UnexpectedMessageType {
-                        expected: MessageType::Application,
-                        received: message_type,
-                    })
-                }
-            }
-            let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
-            // Should we return errors here? 🤔
-            if last_response && !stream_terminated {
-                warn!("Response unexpectedly not marked as end of stream");
-            } else if !last_response && stream_terminated {
-                warn!("Unexpected end of stream");
-            }
-
-            return Ok(message.to_owned());
+        let message = self.read_message::<Payload>().await?;
+        let headers = message.headers();
+        let received_stream_id = headers.stream_id();
+        if received_stream_id != stream_id {
+            // Since we use separate connections for each subscriptions, we shouldn't receive
+            // messsages with unexpected stream IDs. If for any reason, this turns out not to be the
+            // case, we probably should make the stream ID and this check optional.
+            return Err(Error::UnexpectedStreamId {
+                expected: stream_id,
+                received: received_stream_id,
+            });
         }
+        trace!("Received response with stream ID {stream_id}");
+
+        let message_type = headers.message_type();
+        match message_type {
+            MessageType::Application => (),
+            MessageType::ApplicationError => {
+                return Err(Error::Application(
+                    message.payload().as_ref().map(ToString::to_string).unwrap_or_default(),
+                ))
+            }
+            // We already established above that the message belong to the stream ID we're
+            // interested in so the message type must match here.
+            _ => {
+                return Err(Error::UnexpectedMessageType {
+                    expected: MessageType::Application,
+                    received: message_type,
+                })
+            }
+        }
+        let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
+        // Should we return errors here? 🤔
+        if last_response && !stream_terminated {
+            warn!("Response unexpectedly not marked as end of stream");
+        } else if !last_response && stream_terminated {
+            warn!("Unexpected end of stream");
+        }
+
+        return Ok(message);
     }
 
-    pub async fn read_message(&mut self) -> Result<Message<'_>> {
+    pub async fn read_message<'c, Payload>(&'c mut self) -> Result<Message<'c, Payload>>
+    where
+        Payload: Deserialize<'c> + Debug,
+    {
         self.socket.read_exact(&mut self.buffer[0..PRELUDE_SIZE]).await?;
         let prelude = Prelude::from_bytes(&mut &self.buffer[0..PRELUDE_SIZE])?;
         if prelude.total_len() > self.buffer.len() {

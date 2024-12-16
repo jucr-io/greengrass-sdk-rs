@@ -1,12 +1,12 @@
 use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
-use serde::Serialize;
-use std::io::Write;
+use serde::{Deserialize, Serialize};
+use std::{fmt::Debug, io::Write};
 use tracing::trace;
 
 use headers::{Headers, MessageFlags, MessageType};
 use prelude::Prelude;
-use serde_json::{from_slice, json, to_value, to_vec, Value};
+use serde_json::{from_slice, to_vec};
 
 pub mod headers;
 pub mod prelude;
@@ -14,31 +14,21 @@ pub mod prelude;
 use crate::{env, Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Message<'m> {
+pub struct Message<'m, Payload> {
     headers: Headers<'m>,
-    payload: Option<Value>,
+    payload: Option<Payload>,
 }
 
-impl<'m> Message<'m> {
-    pub fn new(headers: Headers<'m>, payload: Option<Value>) -> Self {
+impl<'m, Payload> Message<'m, Payload> {
+    pub fn new(headers: Headers<'m>, payload: Option<Payload>) -> Self {
         Self { headers, payload }
-    }
-
-    pub fn connect_request() -> Result<Self> {
-        let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
-        headers.insert(":version", headers::Value::String("0.1.0".into()));
-        headers.insert(":content-type", headers::Value::String("application/json".into()));
-        let auth_token = env::auth_token()?;
-        let payload = json!({ "authToken": auth_token });
-
-        Ok(Self::new(headers, Some(payload)))
     }
 
     pub fn ipc_call(
         service_model_type: &'static str,
         operation: &'static str,
         stream_id: i32,
-        payload: Option<Value>,
+        payload: Option<Payload>,
     ) -> Self {
         let mut headers = Headers::new(stream_id, MessageType::Application, MessageFlags::none());
         headers.insert("service-model-type", headers::Value::String(service_model_type.into()));
@@ -47,62 +37,19 @@ impl<'m> Message<'m> {
         Self::new(headers, payload)
     }
 
-    pub fn component_updates_subcription_request(stream_id: i32) -> Self {
-        Self::ipc_call(
-            "aws.greengrass#SubscribeToComponentUpdatesRequest",
-            "aws.greengrass#SubscribeToComponentUpdates",
-            stream_id,
-            None,
-        )
+    pub fn headers(&self) -> &Headers<'m> {
+        &self.headers
     }
 
-    pub fn defer_component_update(
-        stream_id: i32,
-        deployment_id: &str,
-        component_name: Option<&str>,
-        recheck_after_ms: Option<u64>,
-    ) -> Self {
-        #[derive(Serialize)]
-        struct DeferComponentUpdateRequest<'a> {
-            #[serde(rename = "deploymentId")]
-            deployment_id: &'a str,
-            #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
-            message: Option<&'a str>,
-            #[serde(rename = "recheckAfterMs", skip_serializing_if = "Option::is_none")]
-            recheck_after_ms: Option<u64>,
-        }
-
-        let payload = to_value(DeferComponentUpdateRequest {
-            deployment_id,
-            message: component_name,
-            recheck_after_ms,
-        })
-        .unwrap();
-
-        Self::ipc_call(
-            "aws.greengrass#DeferComponentUpdateRequest",
-            "aws.greengrass#DeferComponentUpdate",
-            stream_id,
-            Some(payload),
-        )
+    pub fn payload(&self) -> &Option<Payload> {
+        &self.payload
     }
+}
 
-    pub fn update_state(stream_id: i32, state: crate::LifecycleState) -> Self {
-        #[derive(Serialize)]
-        struct UpdateStateRequest {
-            #[serde(rename = "state")]
-            state: crate::LifecycleState,
-        }
-        let payload = to_value(UpdateStateRequest { state }).unwrap();
-
-        Self::ipc_call(
-            "aws.greengrass#UpdateStateRequest",
-            "aws.greengrass#UpdateState",
-            stream_id,
-            Some(payload),
-        )
-    }
-
+impl<'m, Payload> Message<'m, Payload>
+where
+    Payload: Serialize + Debug,
+{
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::with_capacity(1024);
 
@@ -135,7 +82,12 @@ impl<'m> Message<'m> {
 
         Ok(bytes)
     }
+}
 
+impl<'m, Payload> Message<'m, Payload>
+where
+    Payload: Deserialize<'m> + Debug,
+{
     pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self> {
         trace!("Parsing message from bytes: {:02X?}", bytes);
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
@@ -174,23 +126,104 @@ impl<'m> Message<'m> {
 
         Ok(Self::new(headers, payload))
     }
+}
 
-    pub fn headers(&self) -> &Headers<'m> {
-        &self.headers
+impl<'m, Payload> Message<'m, Payload>
+where
+    Payload: ToOwned,
+{
+    pub fn to_owned(&self) -> Message<'static, Payload::Owned> {
+        Message {
+            headers: self.headers.to_owned(),
+            payload: self.payload.as_ref().map(ToOwned::to_owned),
+        }
     }
+}
 
-    pub fn payload(&self) -> &Option<Value> {
-        &self.payload
-    }
+impl<'m> Message<'m, ConnectRequest> {
+    pub fn connect_request() -> Result<Self> {
+        let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
+        headers.insert(":version", headers::Value::String("0.1.0".into()));
+        headers.insert(":content-type", headers::Value::String("application/json".into()));
+        // TODO: Cache the env in a static variable and then `ConnectRequest` can use `&'static str`.
+        let auth_token = env::auth_token()?;
 
-    pub fn to_owned(&self) -> Message<'static> {
-        Message { headers: self.headers.to_owned(), payload: self.payload.clone() }
+        Ok(Self::new(headers, Some(ConnectRequest { auth_token })))
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConnectRequest {
+    #[serde(rename = "authToken")]
+    auth_token: String,
+}
+
+impl<'m> Message<'m, DeferComponentUpdateRequest<'m>> {
+    pub fn defer_component_update(
+        stream_id: i32,
+        deployment_id: &'m str,
+        component_name: Option<&'m str>,
+        recheck_after_ms: Option<u64>,
+    ) -> Self {
+        let payload = DeferComponentUpdateRequest {
+            deployment_id,
+            message: component_name,
+            recheck_after_ms,
+        };
+
+        Self::ipc_call(
+            "aws.greengrass#DeferComponentUpdateRequest",
+            "aws.greengrass#DeferComponentUpdate",
+            stream_id,
+            Some(payload),
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DeferComponentUpdateRequest<'a> {
+    #[serde(rename = "deploymentId")]
+    deployment_id: &'a str,
+    #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
+    message: Option<&'a str>,
+    #[serde(rename = "recheckAfterMs", skip_serializing_if = "Option::is_none")]
+    recheck_after_ms: Option<u64>,
+}
+
+impl<'m> Message<'m, ()> {
+    pub fn component_updates_subcription_request(stream_id: i32) -> Self {
+        Self::ipc_call(
+            "aws.greengrass#SubscribeToComponentUpdatesRequest",
+            "aws.greengrass#SubscribeToComponentUpdates",
+            stream_id,
+            None,
+        )
+    }
+}
+
+impl<'m> Message<'m, UpdateStateRequest> {
+    pub fn update_state(stream_id: i32, state: crate::LifecycleState) -> Self {
+        let payload = UpdateStateRequest { state };
+
+        Self::ipc_call(
+            "aws.greengrass#UpdateStateRequest",
+            "aws.greengrass#UpdateState",
+            stream_id,
+            Some(payload),
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateStateRequest {
+    #[serde(rename = "state")]
+    state: crate::LifecycleState,
 }
 
 #[cfg(test)]
 mod tests {
     use pretty_hex::PrettyHex;
+    use serde_json::json;
 
     use super::*;
 
