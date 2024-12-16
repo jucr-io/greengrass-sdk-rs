@@ -12,8 +12,13 @@ use crate::{
     env,
     protocol::{
         headers::{MessageFlags, MessageType},
+        message::{
+            component_update::{ComponentUpdateSubscriptionRequest, DeferComponentUpdateRequest},
+            handshake::ConnectRequest,
+            state::UpdateStateRequest,
+            Message,
+        },
         prelude::{Prelude, PRELUDE_SIZE},
-        Message,
     },
     Error, Result,
 };
@@ -33,7 +38,7 @@ impl Connection {
         let mut conn = Self { socket: stream, next_stream_id: 1, buffer: Vec::from([0; 1024]) };
 
         // Handshake
-        let message = Message::connect_request()?;
+        let message = ConnectRequest::new()?;
         conn.send_message(message).await?;
         let response = conn.read_message::<Value>().await?;
         let headers = response.headers();
@@ -49,7 +54,7 @@ impl Connection {
 
     pub async fn subscribe_to_component_updates(&mut self) -> Result<i32> {
         let id = self.next_stream_id();
-        let message = Message::component_updates_subcription_request(id);
+        let message = ComponentUpdateSubscriptionRequest::new(id);
         self.send_message(message).await?;
         let _ = self.read_response::<Value>(id, false).await?;
 
@@ -64,7 +69,7 @@ impl Connection {
     ) -> Result<()> {
         let id = self.next_stream_id();
         let message =
-            Message::defer_component_update(id, deployment_id, component_name, recheck_after_ms);
+            DeferComponentUpdateRequest::new(id, deployment_id, component_name, recheck_after_ms);
         self.send_message(message).await?;
         let _ = self.read_response::<Value>(id, true).await?;
 
@@ -73,7 +78,7 @@ impl Connection {
 
     pub async fn update_state(&mut self, state: crate::LifecycleState) -> Result<()> {
         let id = self.next_stream_id();
-        let message = Message::update_state(id, state);
+        let message = UpdateStateRequest::new(id, state);
         self.send_message(message).await?;
         let _ = self.read_response::<Value>(id, true).await?;
 
