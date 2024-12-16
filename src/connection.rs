@@ -40,9 +40,9 @@ impl Connection {
         // Handshake
         let message = ConnectRequest::new()?;
         conn.send_message(message).await?;
-        let response = conn.read_message::<Value>().await?;
+        let response = conn.read_response::<Value>(0, true).await?;
         let headers = response.headers();
-        if headers.stream_id() != 0 || headers.message_type() != MessageType::ConnectAck {
+        if headers.message_type() != MessageType::ConnectAck {
             return Err(Error::Protocol("Invalid connection response".into()));
         }
         if !headers.message_flags().contains(MessageFlags::ConnectionAccepted) {
