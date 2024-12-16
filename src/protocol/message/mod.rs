@@ -106,11 +106,22 @@ where
         if headers.size_in_bytes().unwrap() as usize != prelude.headers_len() {
             return Err(Error::Protocol("Incorrect header length".into()));
         }
+
         trace!("Headers: {:?}", headers);
         *bytes = &bytes[prelude.headers_len()..];
 
         // 8 bytes prelude + 4 bytes CRC checksum of prelude + header bytes already parsed.
         let msg_crc_offset = prelude.total_len() - 12 - prelude.headers_len() - 4;
+        if matches!(headers.message_type(), MessageType::ApplicationError) {
+            let err_msg = if msg_crc_offset != 0 {
+                from_slice(&bytes[..dbg!(msg_crc_offset)])
+                    .map_err(|e| Error::Protocol(format!("Invalid payload: {e}")))?
+            } else {
+                String::new()
+            };
+
+            return Err(Error::Application(err_msg));
+        }
         let payload = if msg_crc_offset != 0 {
             from_slice(&bytes[..dbg!(msg_crc_offset)])
                 .map_err(|e| Error::Protocol(format!("Invalid payload: {e}")))?

@@ -104,7 +104,7 @@ impl Connection {
         last_response: bool,
     ) -> Result<Message<'c, Payload>>
     where
-        Payload: Deserialize<'c> + Debug + ToString,
+        Payload: Deserialize<'c> + Debug,
     {
         trace!("Waiting for response with stream ID {stream_id}");
         let message = self.read_message::<Payload>().await?;
@@ -124,11 +124,6 @@ impl Connection {
         let message_type = headers.message_type();
         match message_type {
             MessageType::Application => (),
-            MessageType::ApplicationError => {
-                return Err(Error::Application(
-                    message.payload().as_ref().map(ToString::to_string).unwrap_or_default(),
-                ))
-            }
             // We already established above that the message belong to the stream ID we're
             // interested in so the message type must match here.
             _ => {
