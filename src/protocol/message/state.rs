@@ -19,3 +19,6 @@ impl<'m> UpdateStateRequest {
         )
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateStateResponse {}

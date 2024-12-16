@@ -34,6 +34,9 @@ impl<'m> DeferComponentUpdateRequest<'m> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DeferComponentUpdateResponse {}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ComponentUpdateSubscriptionRequest {}
 
 impl<'m> ComponentUpdateSubscriptionRequest {
@@ -44,5 +47,59 @@ impl<'m> ComponentUpdateSubscriptionRequest {
             stream_id,
             None,
         )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ComponentUpdateSubscriptionResponse<'c> {
+    #[serde(borrow)]
+    messages: Messages<'c>,
+}
+
+impl ComponentUpdateSubscriptionResponse<'_> {
+    pub fn pre_update_event(&self) -> Option<&PreComponentUpdateEvent> {
+        self.messages.pre_update_event.as_ref()
+    }
+
+    pub fn post_update_event(&self) -> Option<&PostComponentUpdateEvent> {
+        self.messages.post_update_event.as_ref()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Messages<'m> {
+    #[serde(borrow, rename = "preUpdateEvent")]
+    pre_update_event: Option<PreComponentUpdateEvent<'m>>,
+    #[serde(rename = "postUpdateEvent")]
+    post_update_event: Option<PostComponentUpdateEvent<'m>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PreComponentUpdateEvent<'p> {
+    #[serde(rename = "deploymentId")]
+    deployment_id: &'p str,
+    #[serde(rename = "isGgcRestarting")]
+    is_ggc_restarting: bool,
+}
+
+impl PreComponentUpdateEvent<'_> {
+    pub fn deployment_id(&self) -> &str {
+        self.deployment_id
+    }
+
+    pub fn is_ggc_restarting(&self) -> bool {
+        self.is_ggc_restarting
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PostComponentUpdateEvent<'p> {
+    #[serde(rename = "deploymentId")]
+    deployment_id: &'p str,
+}
+
+impl PostComponentUpdateEvent<'_> {
+    pub fn deployment_id(&self) -> &str {
+        self.deployment_id
     }
 }

@@ -22,3 +22,6 @@ pub struct ConnectRequest {
     #[serde(rename = "authToken")]
     auth_token: String,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConnectResponse {}

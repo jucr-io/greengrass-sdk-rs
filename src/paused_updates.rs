@@ -1,6 +1,6 @@
+use crate::protocol::message::component_update::ComponentUpdateSubscriptionResponse;
 pub use crate::{connection::Connection, Error, Result};
 
-use serde_json::Value;
 use tracing::{debug, error, trace, warn};
 
 pub struct PausedUpdates {
@@ -19,7 +19,10 @@ impl PausedUpdates {
     pub async fn keep_paused(mut self) {
         loop {
             trace!("Waiting for the next component update event..");
-            let res = self.conn.read_response(self.stream_id, false).await;
+            let res = self
+                .conn
+                .read_response::<ComponentUpdateSubscriptionResponse>(self.stream_id, false)
+                .await;
             let update = match res {
                 Ok(update) => update,
                 Err(e @ Error::Io(_))
@@ -37,25 +40,15 @@ impl PausedUpdates {
             };
             trace!("Received component update: {update:?}");
 
-            let messages = match update
-                .payload()
-                .as_ref()
-                .and_then(|p: &Value| p.get("messages"))
-                .and_then(|m| m.as_object())
-            {
-                Some(m) => m,
+            let response = match update.payload().as_ref() {
+                Some(p) => p,
                 None => {
                     warn!("Received component update without (expected) payload");
 
                     continue;
                 }
             };
-            let deployment_id = match messages
-                .get("preUpdateEvent")
-                .and_then(|m| m.as_object())
-                .and_then(|e| e.get("deploymentId"))
-                .and_then(|d| d.as_str())
-            {
+            let deployment_id = match response.pre_update_event().map(|e| e.deployment_id()) {
                 Some(d) => d.to_string(),
                 None => {
                     debug!("No `preUpdateEvent` in the update, ignoring..");

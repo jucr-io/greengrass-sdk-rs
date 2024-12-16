@@ -13,9 +13,12 @@ use crate::{
     protocol::{
         headers::{MessageFlags, MessageType},
         message::{
-            component_update::{ComponentUpdateSubscriptionRequest, DeferComponentUpdateRequest},
-            handshake::ConnectRequest,
-            state::UpdateStateRequest,
+            component_update::{
+                ComponentUpdateSubscriptionRequest, DeferComponentUpdateRequest,
+                DeferComponentUpdateResponse,
+            },
+            handshake::{ConnectRequest, ConnectResponse},
+            state::{UpdateStateRequest, UpdateStateResponse},
             Message,
         },
         prelude::{Prelude, PRELUDE_SIZE},
@@ -40,7 +43,7 @@ impl Connection {
         // Handshake
         let message = ConnectRequest::new()?;
         conn.send_message(message).await?;
-        let response = conn.read_response::<Value>(0, true).await?;
+        let response = conn.read_response::<ConnectResponse>(0, true).await?;
         let headers = response.headers();
         if headers.message_type() != MessageType::ConnectAck {
             return Err(Error::Protocol("Invalid connection response".into()));
@@ -71,7 +74,7 @@ impl Connection {
         let message =
             DeferComponentUpdateRequest::new(id, deployment_id, component_name, recheck_after_ms);
         self.send_message(message).await?;
-        let _ = self.read_response::<Value>(id, true).await?;
+        let _ = self.read_response::<DeferComponentUpdateResponse>(id, true).await?;
 
         Ok(())
     }
@@ -80,7 +83,7 @@ impl Connection {
         let id = self.next_stream_id();
         let message = UpdateStateRequest::new(id, state);
         self.send_message(message).await?;
-        let _ = self.read_response::<Value>(id, true).await?;
+        let _ = self.read_response::<UpdateStateResponse>(id, true).await?;
 
         Ok(())
     }
