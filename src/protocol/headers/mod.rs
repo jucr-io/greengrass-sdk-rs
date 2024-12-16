@@ -13,6 +13,9 @@ pub use message_type::MessageType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Headers<'h> {
+    stream_id: i32,
+    message_type: MessageType,
+    message_flags: BitFlags<MessageFlags>,
     headers: HashMap<Cow<'h, str>, Value<'h>>,
 }
 
@@ -27,7 +30,7 @@ impl<'h> Headers<'h> {
         headers.insert(":message-type".into(), Value::Int32(message_type.into()));
         headers.insert(":message-flags".into(), Value::Int32(message_flags.bits() as i32));
 
-        Self { headers }
+        Self { headers, stream_id, message_type, message_flags }
     }
 
     pub fn insert<N>(&mut self, name: N, value: Value<'h>)
@@ -70,76 +73,58 @@ impl<'h> Headers<'h> {
     }
 
     pub fn from_bytes(bytes: &mut &'h [u8]) -> Result<Self> {
-        let mut headers = Self { headers: HashMap::new() };
+        let mut headers = HashMap::new();
 
         while !bytes.is_empty() {
             let name = read_header_name_from_bytes(bytes)?;
             let value = Value::from_bytes(bytes)?;
 
-            headers.headers.insert(Cow::Borrowed(name), value);
+            headers.insert(Cow::Borrowed(name), value);
         }
 
         // Ensure all mandatory headers are present.
-        for (header, convert_fn) in [
-            (":stream-id", (&|_| Some(())) as &dyn Fn(_) -> Option<()>),
-            (
-                ":message-type",
-                (&|i| MessageType::try_from(i).ok().map(|_| ())) as &dyn Fn(_) -> Option<()>,
-            ),
-            (
-                ":message-flags",
-                (&|i: i32| MessageFlags::from_bits(i as u32).ok().map(|_| ()))
-                    as &dyn Fn(_) -> Option<()>,
-            ),
-        ] {
-            if headers
-                .headers
-                .get(header)
-                .and_then(|v| match v {
-                    Value::Int32(i) => convert_fn(*i),
-                    _ => None,
-                })
-                .is_none()
-            {
-                return Err(Error::MissingHeader(header));
-            }
-        }
+        let stream_id = headers
+            .get(":stream-id")
+            .and_then(Value::as_int32)
+            .ok_or_else(|| Error::MissingHeader(":stream-id"))?;
+        let message_type = headers
+            .get(":message-type")
+            .and_then(Value::as_int32)
+            .ok_or_else(|| Error::MissingHeader(":message-type"))
+            .and_then(TryInto::try_into)?;
+        let message_flags = headers
+            .get(":message-flags")
+            .and_then(Value::as_int32)
+            .ok_or_else(|| Error::MissingHeader(":message-flags"))
+            .and_then(|i| {
+                MessageFlags::from_bits(i as u32).map_err(|e| Error::Protocol(e.to_string()))
+            })?;
 
-        Ok(headers)
+        Ok(Self { headers, stream_id, message_type, message_flags })
     }
 
     pub fn to_owned(&self) -> Headers<'static> {
         let headers =
             self.headers.iter().map(|(k, v)| (Cow::Owned(k.to_string()), v.to_owned())).collect();
 
-        Headers { headers }
+        Headers {
+            stream_id: self.stream_id,
+            message_type: self.message_type,
+            message_flags: self.message_flags,
+            headers,
+        }
     }
 
-    // # SAFETY
-    //
-    // These getters of the mandatory headers assume that the headers are present and correct as our
-    // constructors ensure that.
-    //
-
     pub fn stream_id(&self) -> i32 {
-        match self.headers.get(":stream-id").unwrap() {
-            Value::Int32(id) => *id,
-            _ => unreachable!(),
-        }
+        self.stream_id
     }
 
     pub fn message_type(&self) -> MessageType {
-        match self.headers.get(":message-type").unwrap() {
-            Value::Int32(t) => MessageType::try_from(*t).unwrap(),
-            _ => unreachable!(),
-        }
+        self.message_type
     }
 
     pub fn message_flags(&self) -> BitFlags<MessageFlags> {
-        match self.headers.get(":message-flags").unwrap() {
-            Value::Int32(f) => MessageFlags::from_bits(*f as u32).unwrap(),
-            _ => unreachable!(),
-        }
+        self.message_flags
     }
 }
 

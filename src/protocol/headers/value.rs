@@ -131,6 +131,69 @@ impl Value<'_> {
             Value::Uuid(uuid) => Value::Uuid(*uuid),
         }
     }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_byte(&self) -> Option<u8> {
+        match self {
+            Value::Byte(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_int16(&self) -> Option<i16> {
+        match self {
+            Value::Int16(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_int32(&self) -> Option<i32> {
+        match self {
+            Value::Int32(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_int64(&self) -> Option<i64> {
+        match self {
+            Value::Int64(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_byte_buffer(&self) -> Option<&[u8]> {
+        match self {
+            Value::ByteBuffer(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_timestamp(&self) -> Option<i64> {
+        match self {
+            Value::Timestamp(ts) => Some(*ts),
+            _ => None,
+        }
+    }
+
+    pub fn as_uuid(&self) -> Option<uuid::Uuid> {
+        match self {
+            Value::Uuid(uuid) => Some(*uuid),
+            _ => None,
+        }
+    }
 }
 
 impl<'v> Value<'v> {
