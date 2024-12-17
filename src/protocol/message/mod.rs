@@ -57,7 +57,6 @@ where
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::with_capacity(1024);
 
-        // First the prelude.
         let headers_len = self.headers.size_in_bytes()?;
         let payload = self.payload.as_ref().map(|p| to_vec(p)).transpose()?.unwrap_or_default();
         let payload_len: u32 = payload.len().try_into().map_err(|_| Error::BufferTooLarge {
