@@ -56,7 +56,6 @@ impl PausedUpdates {
                     continue;
                 }
             };
-            drop(update);
 
             if let Err(e) = self
                 .conn
