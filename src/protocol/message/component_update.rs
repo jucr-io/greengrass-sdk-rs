@@ -1,7 +1,7 @@
 use super::Message;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DeferComponentUpdateRequest<'a> {
     #[serde(rename = "deploymentId")]
     deployment_id: &'a str,
@@ -33,10 +33,10 @@ impl<'m> DeferComponentUpdateRequest<'m> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DeferComponentUpdateResponse {}
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ComponentUpdateSubscriptionRequest {}
 
 impl<'m> ComponentUpdateSubscriptionRequest {
@@ -50,7 +50,7 @@ impl<'m> ComponentUpdateSubscriptionRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ComponentUpdateSubscriptionResponse<'c> {
     #[serde(borrow, rename = "preUpdateEvent")]
     pre_update_event: Option<PreComponentUpdateEvent<'c>>,
@@ -68,7 +68,7 @@ impl ComponentUpdateSubscriptionResponse<'_> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct PreComponentUpdateEvent<'p> {
     #[serde(rename = "deploymentId")]
     deployment_id: &'p str,
@@ -86,7 +86,7 @@ impl PreComponentUpdateEvent<'_> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct PostComponentUpdateEvent<'p> {
     #[serde(rename = "deploymentId")]
     deployment_id: &'p str,

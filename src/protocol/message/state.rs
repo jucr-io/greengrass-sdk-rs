@@ -1,7 +1,7 @@
 use super::Message;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct UpdateStateRequest {
     #[serde(rename = "state")]
     state: crate::LifecycleState,
@@ -20,5 +20,5 @@ impl<'m> UpdateStateRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct UpdateStateResponse {}
