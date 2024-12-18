@@ -52,26 +52,20 @@ impl<'m> ComponentUpdateSubscriptionRequest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ComponentUpdateSubscriptionResponse<'c> {
-    #[serde(borrow)]
-    messages: Messages<'c>,
+    #[serde(borrow, rename = "preUpdateEvent")]
+    pre_update_event: Option<PreComponentUpdateEvent<'c>>,
+    #[serde(rename = "postUpdateEvent")]
+    post_update_event: Option<PostComponentUpdateEvent<'c>>,
 }
 
 impl ComponentUpdateSubscriptionResponse<'_> {
     pub fn pre_update_event(&self) -> Option<&PreComponentUpdateEvent> {
-        self.messages.pre_update_event.as_ref()
+        self.pre_update_event.as_ref()
     }
 
     pub fn post_update_event(&self) -> Option<&PostComponentUpdateEvent> {
-        self.messages.post_update_event.as_ref()
+        self.post_update_event.as_ref()
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Messages<'m> {
-    #[serde(borrow, rename = "preUpdateEvent")]
-    pre_update_event: Option<PreComponentUpdateEvent<'m>>,
-    #[serde(rename = "postUpdateEvent")]
-    post_update_event: Option<PostComponentUpdateEvent<'m>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
