@@ -72,6 +72,6 @@ impl PausedUpdates {
     }
 }
 
-// 1 second.
+// 1 minute.
 const DEFER_COMPONENT_UPDATE_TIMEOUT_MS: RecheckAfterMs =
-    RecheckAfterMs::Defer(NonZeroU64::new(1000).unwrap());
+    RecheckAfterMs::Defer(NonZeroU64::new(60_000).unwrap());
