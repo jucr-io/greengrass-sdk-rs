@@ -10,7 +10,8 @@ impl ConnectRequest {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
-        // TODO: Cache the env in a static variable and then `ConnectRequest` can use `&'static str`.
+        // TODO: Cache the env in a static variable and then `ConnectRequest` can use
+        // `&'static str`.
         let auth_token = env::auth_token()?;
 
         Ok(Message::new(headers, Some(ConnectRequest { auth_token })))
