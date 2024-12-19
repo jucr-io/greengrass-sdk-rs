@@ -52,9 +52,9 @@ impl<'m> ComponentUpdateSubscriptionRequest {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ComponentUpdateSubscriptionResponse<'c> {
-    #[serde(borrow, rename = "preUpdateEvent")]
+    #[serde(borrow, rename = "preUpdateEvent", skip_serializing_if = "Option::is_none")]
     pre_update_event: Option<PreComponentUpdateEvent<'c>>,
-    #[serde(rename = "postUpdateEvent")]
+    #[serde(rename = "postUpdateEvent", skip_serializing_if = "Option::is_none")]
     post_update_event: Option<PostComponentUpdateEvent<'c>>,
 }
 
