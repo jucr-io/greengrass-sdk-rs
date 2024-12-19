@@ -6,6 +6,7 @@ use tokio::{
     net::UnixStream,
 };
 use tracing::{trace, warn};
+use uuid::Uuid;
 
 use crate::{
     env,
@@ -63,7 +64,7 @@ impl Connection {
 
     pub async fn defer_component_update(
         &mut self,
-        deployment_id: &str,
+        deployment_id: Uuid,
         component_name: Option<&str>,
         recheck_after_ms: RecheckAfterMs,
     ) -> Result<()> {

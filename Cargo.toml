@@ -11,7 +11,7 @@ serde = { version = "1.0.215", default-features = false, features = ["derive"] }
 serde_json = "1.0.133"
 tokio = { version = "1", features = ["rt", "sync", "net", "io-util"] }
 tracing = "0.1"
-uuid = "1.11.0"
+uuid = { version = "1.11.0", features = ["serde"] }
 
 [dev-dependencies]
 pretty-hex = "0.4.1"

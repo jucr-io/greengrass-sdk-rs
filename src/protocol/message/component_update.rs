@@ -1,11 +1,12 @@
 use super::Message;
 use core::num::NonZeroU64;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DeferComponentUpdateRequest<'a> {
     #[serde(rename = "deploymentId")]
-    deployment_id: &'a str,
+    deployment_id: Uuid,
     #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
     message: Option<&'a str>,
     #[serde(rename = "recheckAfterMs")]
@@ -15,7 +16,7 @@ pub struct DeferComponentUpdateRequest<'a> {
 impl<'m> DeferComponentUpdateRequest<'m> {
     pub fn new(
         stream_id: i32,
-        deployment_id: &'m str,
+        deployment_id: Uuid,
         component_name: Option<&'m str>,
         recheck_after_ms: RecheckAfterMs,
     ) -> Message<'m, Self> {
@@ -86,14 +87,14 @@ impl<'m> ComponentUpdateSubscriptionRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ComponentUpdateSubscriptionResponse<'c> {
-    #[serde(borrow, rename = "preUpdateEvent", skip_serializing_if = "Option::is_none")]
-    pre_update_event: Option<PreComponentUpdateEvent<'c>>,
+pub struct ComponentUpdateSubscriptionResponse {
+    #[serde(rename = "preUpdateEvent", skip_serializing_if = "Option::is_none")]
+    pre_update_event: Option<PreComponentUpdateEvent>,
     #[serde(rename = "postUpdateEvent", skip_serializing_if = "Option::is_none")]
-    post_update_event: Option<PostComponentUpdateEvent<'c>>,
+    post_update_event: Option<PostComponentUpdateEvent>,
 }
 
-impl ComponentUpdateSubscriptionResponse<'_> {
+impl ComponentUpdateSubscriptionResponse {
     pub fn pre_update_event(&self) -> Option<&PreComponentUpdateEvent> {
         self.pre_update_event.as_ref()
     }
@@ -104,15 +105,15 @@ impl ComponentUpdateSubscriptionResponse<'_> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct PreComponentUpdateEvent<'p> {
+pub struct PreComponentUpdateEvent {
     #[serde(rename = "deploymentId")]
-    deployment_id: &'p str,
+    deployment_id: Uuid,
     #[serde(rename = "isGgcRestarting")]
     is_ggc_restarting: bool,
 }
 
-impl PreComponentUpdateEvent<'_> {
-    pub fn deployment_id(&self) -> &str {
+impl PreComponentUpdateEvent {
+    pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }
 
@@ -122,13 +123,13 @@ impl PreComponentUpdateEvent<'_> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct PostComponentUpdateEvent<'p> {
+pub struct PostComponentUpdateEvent {
     #[serde(rename = "deploymentId")]
-    deployment_id: &'p str,
+    deployment_id: Uuid,
 }
 
-impl PostComponentUpdateEvent<'_> {
-    pub fn deployment_id(&self) -> &str {
+impl PostComponentUpdateEvent {
+    pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }
 }

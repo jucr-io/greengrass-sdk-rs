@@ -74,7 +74,10 @@ mod tests {
         assert!(message.headers().message_flags().is_empty());
         let payload = message.payload().as_ref().unwrap();
         let pre_update_event = payload.pre_update_event().unwrap();
-        assert_eq!(pre_update_event.deployment_id(), "77d00c6b-f0c6-4e14-86cb-d476f0016044");
+        assert_eq!(
+            pre_update_event.deployment_id(),
+            "77d00c6b-f0c6-4e14-86cb-d476f0016044".try_into().unwrap()
+        );
         assert_eq!(pre_update_event.is_ggc_restarting(), false);
         assert!(payload.post_update_event().is_none());
 
@@ -105,7 +108,10 @@ mod tests {
         assert!(message.headers().message_flags().is_empty());
         let payload = message.payload().as_ref().unwrap();
         let post_update_event = payload.post_update_event().unwrap();
-        assert_eq!(post_update_event.deployment_id(), "8f55775e-8db1-4b82-a548-1916f7b361fb");
+        assert_eq!(
+            post_update_event.deployment_id(),
+            "8f55775e-8db1-4b82-a548-1916f7b361fb".try_into().unwrap()
+        );
         assert!(payload.pre_update_event().is_none());
     }
 }
