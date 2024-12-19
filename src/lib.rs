@@ -1,3 +1,5 @@
+#![warn(clippy::std_instead_of_core)]
+
 mod connection;
 mod error;
 pub mod protocol;

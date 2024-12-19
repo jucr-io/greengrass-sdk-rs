@@ -245,7 +245,7 @@ impl<'v> Value<'v> {
                     .get(..len)
                     .ok_or(Error::Protocol("Invalid header value: missing string".into()))
                     .map(|slice| {
-                        let string = std::str::from_utf8(slice).map_err(|_| {
+                        let string = core::str::from_utf8(slice).map_err(|_| {
                             Error::Protocol("Invalid header value: invalid UTF-8".into())
                         })?;
                         Ok(Value::String(Cow::Borrowed(string)))

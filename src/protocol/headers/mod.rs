@@ -161,6 +161,6 @@ fn read_header_name_from_bytes<'n>(bytes: &mut &'n [u8]) -> Result<&'n str> {
         bytes.get(..len).ok_or(Error::Protocol("Invalid header name: missing name".into()))?;
     *bytes = &bytes[len..];
 
-    std::str::from_utf8(name_bytes)
+    core::str::from_utf8(name_bytes)
         .map_err(|_| Error::Protocol("Invalid header name: invalid UTF-8".into()))
 }

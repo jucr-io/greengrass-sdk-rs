@@ -1,7 +1,5 @@
-use std::{
-    fmt::{self, Display, Formatter},
-    io,
-};
+use core::fmt::{self, Display, Formatter};
+use std::io;
 
 use crate::protocol::headers::MessageType;
 
@@ -21,7 +19,7 @@ pub enum Error {
     ConnectionRefused,
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {

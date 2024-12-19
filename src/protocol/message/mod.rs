@@ -1,7 +1,8 @@
+use core::fmt::Debug;
 use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, io::Write};
+use std::io::Write;
 use tracing::trace;
 
 use serde_json::{from_slice, to_vec};
