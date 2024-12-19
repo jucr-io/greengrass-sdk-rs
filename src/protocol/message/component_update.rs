@@ -75,8 +75,8 @@ pub struct DeferComponentUpdateResponse {}
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ComponentUpdateSubscriptionRequest {}
 
-impl<'m> ComponentUpdateSubscriptionRequest {
-    pub fn new(stream_id: i32) -> Message<'m, Self> {
+impl ComponentUpdateSubscriptionRequest {
+    pub fn new(stream_id: i32) -> Message<'static, Self> {
         Message::ipc_call(
             "aws.greengrass#SubscribeToComponentUpdatesRequest",
             "aws.greengrass#SubscribeToComponentUpdates",

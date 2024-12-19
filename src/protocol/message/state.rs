@@ -7,8 +7,8 @@ pub struct UpdateStateRequest {
     state: crate::LifecycleState,
 }
 
-impl<'m> UpdateStateRequest {
-    pub fn new(stream_id: i32, state: crate::LifecycleState) -> Message<'m, Self> {
+impl UpdateStateRequest {
+    pub fn new(stream_id: i32, state: crate::LifecycleState) -> Message<'static, Self> {
         let payload = UpdateStateRequest { state };
 
         Message::ipc_call(

@@ -88,7 +88,7 @@ impl Value<'_> {
                 bytes_written += 8;
             }
             Value::Uuid(uuid) => {
-                writer.write(uuid.as_bytes())?;
+                writer.write_all(uuid.as_bytes())?;
                 bytes_written += 16;
             }
         }
@@ -199,7 +199,7 @@ impl Value<'_> {
 impl<'v> Value<'v> {
     pub fn from_bytes(bytes: &mut &'v [u8]) -> Result<Self> {
         let r#type = bytes
-            .get(0)
+            .first()
             .copied()
             .ok_or(Error::Protocol("Invalid header value: missing type".into()))?;
         *bytes = &bytes[1..];
@@ -258,11 +258,10 @@ impl<'v> Value<'v> {
                 .map(Value::Timestamp)
                 .map_err(|_| Error::Protocol("Invalid header value: missing timestamp".into())),
             9 => {
-                let array = bytes
+                let slice = bytes
                     .get(..16)
-                    .ok_or(Error::Protocol("Invalid header value: missing UUID".into()))
-                    .map(|slice| slice.try_into().unwrap())?;
-                let value = uuid::Uuid::from_slice(array)
+                    .ok_or(Error::Protocol("Invalid header value: missing UUID".into()))?;
+                let value = uuid::Uuid::from_slice(slice)
                     .map(Value::Uuid)
                     .map_err(|_| Error::Protocol("Invalid header value: invalid UUID".into()))?;
                 *bytes = &bytes[16..];

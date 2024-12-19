@@ -51,7 +51,7 @@ impl<'m, Payload> Message<'m, Payload> {
     }
 }
 
-impl<'m, Payload> Message<'m, Payload>
+impl<Payload> Message<'_, Payload>
 where
     Payload: Serialize + Debug,
 {
@@ -77,7 +77,7 @@ where
 
         // Then the headers and payload.
         self.headers.write_as_bytes(&mut bytes)?;
-        bytes.write(&payload)?;
+        bytes.write_all(&payload)?;
 
         // Finally the CRC checksum of the whole message.
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
@@ -143,7 +143,7 @@ where
     }
 }
 
-impl<'m, Payload> Message<'m, Payload>
+impl<Payload> Message<'_, Payload>
 where
     Payload: ToOwned,
 {

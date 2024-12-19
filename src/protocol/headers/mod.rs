@@ -86,16 +86,16 @@ impl<'h> Headers<'h> {
         let stream_id = headers
             .get(":stream-id")
             .and_then(Value::as_int32)
-            .ok_or_else(|| Error::MissingHeader(":stream-id"))?;
+            .ok_or(Error::MissingHeader(":stream-id"))?;
         let message_type = headers
             .get(":message-type")
             .and_then(Value::as_int32)
-            .ok_or_else(|| Error::MissingHeader(":message-type"))
+            .ok_or(Error::MissingHeader(":message-type"))
             .and_then(TryInto::try_into)?;
         let message_flags = headers
             .get(":message-flags")
             .and_then(Value::as_int32)
-            .ok_or_else(|| Error::MissingHeader(":message-flags"))
+            .ok_or(Error::MissingHeader(":message-flags"))
             .and_then(|i| {
                 MessageFlags::from_bits(i as u32).map_err(|e| Error::Protocol(e.to_string()))
             })?;

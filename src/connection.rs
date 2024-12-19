@@ -155,7 +155,7 @@ impl Connection {
             warn!("Unexpected end of stream");
         }
 
-        return Ok(message);
+        Ok(message)
     }
 
     pub async fn read_message<'c, Payload>(&'c mut self) -> Result<Message<'c, Payload>>
