@@ -14,7 +14,7 @@ use crate::{
         message::{
             component_update::{
                 ComponentUpdateSubscriptionRequest, ComponentUpdateSubscriptionResponse,
-                DeferComponentUpdateRequest, DeferComponentUpdateResponse,
+                DeferComponentUpdateRequest, DeferComponentUpdateResponse, RecheckAfterMs,
             },
             handshake::{ConnectRequest, ConnectResponse},
             state::{UpdateStateRequest, UpdateStateResponse},
@@ -65,7 +65,7 @@ impl Connection {
         &mut self,
         deployment_id: &str,
         component_name: Option<&str>,
-        recheck_after_ms: Option<u64>,
+        recheck_after_ms: RecheckAfterMs,
     ) -> Result<()> {
         let id = self.next_stream_id();
         let message =

@@ -1,4 +1,5 @@
 use super::Message;
+use core::num::NonZeroU64;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -7,8 +8,8 @@ pub struct DeferComponentUpdateRequest<'a> {
     deployment_id: &'a str,
     #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
     message: Option<&'a str>,
-    #[serde(rename = "recheckAfterMs", skip_serializing_if = "Option::is_none")]
-    recheck_after_ms: Option<u64>,
+    #[serde(rename = "recheckAfterMs")]
+    recheck_after_ms: RecheckAfterMs,
 }
 
 impl<'m> DeferComponentUpdateRequest<'m> {
@@ -16,7 +17,7 @@ impl<'m> DeferComponentUpdateRequest<'m> {
         stream_id: i32,
         deployment_id: &'m str,
         component_name: Option<&'m str>,
-        recheck_after_ms: Option<u64>,
+        recheck_after_ms: RecheckAfterMs,
     ) -> Message<'m, Self> {
         let payload = DeferComponentUpdateRequest {
             deployment_id,
@@ -30,6 +31,40 @@ impl<'m> DeferComponentUpdateRequest<'m> {
             stream_id,
             Some(payload),
         )
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum RecheckAfterMs {
+    /// Do not defer the component update.
+    DontDefer,
+    /// Defer the component update for the specified number of milliseconds.
+    Defer(NonZeroU64),
+}
+
+impl Serialize for RecheckAfterMs {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        let value = match self {
+            RecheckAfterMs::DontDefer => 0,
+            RecheckAfterMs::Defer(ms) => ms.get(),
+        };
+
+        serializer.serialize_u64(value)
+    }
+}
+
+impl<'de> Deserialize<'de> for RecheckAfterMs {
+    fn deserialize<D>(deserializer: D) -> Result<RecheckAfterMs, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        u64::deserialize(deserializer).map(|v| match v {
+            0 => RecheckAfterMs::DontDefer,
+            v => RecheckAfterMs::Defer(NonZeroU64::new(v).unwrap()),
+        })
     }
 }
 

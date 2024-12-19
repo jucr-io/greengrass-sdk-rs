@@ -1,4 +1,8 @@
-use crate::protocol::message::component_update::ComponentUpdateSubscriptionResponse;
+use core::num::NonZeroU64;
+
+use crate::protocol::message::component_update::{
+    ComponentUpdateSubscriptionResponse, RecheckAfterMs,
+};
 pub use crate::{connection::Connection, Error, Result};
 
 use tracing::{debug, error, trace, warn};
@@ -59,11 +63,7 @@ impl PausedUpdates {
 
             if let Err(e) = self
                 .conn
-                .defer_component_update(
-                    &deployment_id,
-                    None,
-                    Some(DEFER_COMPONENT_UPDATE_TIMEOUT_MS),
-                )
+                .defer_component_update(&deployment_id, None, DEFER_COMPONENT_UPDATE_TIMEOUT_MS)
                 .await
             {
                 error!("Error deferring component update: {:?}", e);
@@ -73,4 +73,5 @@ impl PausedUpdates {
 }
 
 // 1 second.
-const DEFER_COMPONENT_UPDATE_TIMEOUT_MS: u64 = 1000;
+const DEFER_COMPONENT_UPDATE_TIMEOUT_MS: RecheckAfterMs =
+    RecheckAfterMs::Defer(NonZeroU64::new(1000).unwrap());
