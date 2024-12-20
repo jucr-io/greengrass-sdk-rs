@@ -121,41 +121,50 @@ impl Connection {
         Payload: Deserialize<'c> + Debug,
     {
         trace!("Waiting for response with stream ID {stream_id}");
-        let message = self.read_message::<Payload>().await?;
-        let headers = message.headers();
-        let received_stream_id = headers.stream_id();
-        if received_stream_id != stream_id {
-            // Since we use separate connections for each subscriptions, we shouldn't receive
-            // messsages with unexpected stream IDs. If for any reason, this turns out not to be the
-            // case, we probably should make the stream ID and this check optional.
-            return Err(Error::UnexpectedStreamId {
-                expected: stream_id,
-                received: received_stream_id,
-            });
-        }
-        trace!("Received response with stream ID {stream_id}");
+        loop {
+            // Rationale for `unsafe` use: The current borrow-checker (as of 2024-12-20) is unable
+            // to infer that we don't keep the borrow from the mutable reference around after each
+            // loop and hence it's safe to borrow from `self` multiple times and gives us an error
+            // if we can use `self` directly here. We can do that once Polonius is stable:
+            //
+            // https://github.com/rust-lang/rust/issues/134554
+            //
+            // Safety: We're just converting to a pointer (safe) & back again (unsafe).
+            let conn = unsafe { &mut *(self as *mut Self) };
+            let message = conn.read_message::<Payload>().await?;
+            let headers = message.headers();
+            let received_stream_id = headers.stream_id();
+            if received_stream_id != stream_id {
+                trace!(
+                    "Received message with stream ID {received_stream_id}, expected {stream_id}",
+                );
 
-        let message_type = headers.message_type();
-        match message_type {
-            MessageType::Application => (),
-            // We already established above that the message belong to the stream ID we're
-            // interested in so the message type must match here.
-            _ => {
-                return Err(Error::UnexpectedMessageType {
-                    expected: MessageType::Application,
-                    received: message_type,
-                })
+                continue;
             }
-        }
-        let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
-        // Should we return errors here? 🤔
-        if last_response && !stream_terminated {
-            warn!("Response unexpectedly not marked as end of stream");
-        } else if !last_response && stream_terminated {
-            warn!("Unexpected end of stream");
-        }
 
-        Ok(message)
+            trace!("Received response with stream ID {stream_id}");
+            let message_type = headers.message_type();
+            match message_type {
+                MessageType::Application => (),
+                // We already established above that the message belong to the stream ID we're
+                // interested in so the message type must match here.
+                _ => {
+                    return Err(Error::UnexpectedMessageType {
+                        expected: MessageType::Application,
+                        received: message_type,
+                    })
+                }
+            }
+            let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
+            // Should we return errors here? 🤔
+            if last_response && !stream_terminated {
+                warn!("Response unexpectedly not marked as end of stream");
+            } else if !last_response && stream_terminated {
+                warn!("Unexpected end of stream");
+            }
+
+            break Ok(message);
+        }
     }
 
     pub async fn read_message<'c, Payload>(&'c mut self) -> Result<Message<'c, Payload>>
