@@ -25,7 +25,7 @@ mod tests {
         println!("{:?}", bytes.hex_dump());
 
         let message = Message::from_bytes(&mut &bytes[..]).unwrap();
-        assert_eq!(message.payload(), &payload);
+        assert_eq!(message.payload(), payload.as_ref());
     }
 
     #[test]
@@ -72,7 +72,7 @@ mod tests {
             Message::<ComponentUpdateSubscriptionResponse>::from_bytes(&mut &bytes[..]).unwrap();
         assert_eq!(message.headers().message_type(), MessageType::Application);
         assert!(message.headers().message_flags().is_empty());
-        let payload = message.payload().as_ref().unwrap();
+        let payload = message.payload().unwrap();
         let pre_update_event = payload.pre_update_event().unwrap();
         assert_eq!(
             pre_update_event.deployment_id(),
@@ -106,7 +106,7 @@ mod tests {
             Message::<ComponentUpdateSubscriptionResponse>::from_bytes(&mut &bytes[..]).unwrap();
         assert_eq!(message.headers().message_type(), MessageType::Application);
         assert!(message.headers().message_flags().is_empty());
-        let payload = message.payload().as_ref().unwrap();
+        let payload = message.payload().unwrap();
         let post_update_event = payload.post_update_event().unwrap();
         assert_eq!(
             post_update_event.deployment_id(),

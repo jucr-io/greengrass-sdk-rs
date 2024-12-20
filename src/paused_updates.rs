@@ -44,7 +44,7 @@ impl PausedUpdates {
             };
             trace!("Received component update: {update:?}");
 
-            let response = match update.payload().as_ref() {
+            let response = match update.payload() {
                 Some(p) => p,
                 None => {
                     warn!("Received component update without (expected) payload");

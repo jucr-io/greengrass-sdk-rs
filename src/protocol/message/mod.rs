@@ -46,8 +46,8 @@ impl<'m, Payload> Message<'m, Payload> {
         &self.headers
     }
 
-    pub fn payload(&self) -> &Option<Payload> {
-        &self.payload
+    pub fn payload(&self) -> Option<&Payload> {
+        self.payload.as_ref()
     }
 }
 
