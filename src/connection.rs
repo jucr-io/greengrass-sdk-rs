@@ -144,16 +144,15 @@ impl Connection {
 
             trace!("Received response with stream ID {stream_id}");
             let message_type = headers.message_type();
-            match message_type {
-                MessageType::Application => (),
+            let expected_type =
+                if stream_id == 0 { MessageType::ConnectAck } else { MessageType::Application };
+            if message_type != expected_type {
                 // We already established above that the message belong to the stream ID we're
                 // interested in so the message type must match here.
-                _ => {
-                    return Err(Error::UnexpectedMessageType {
-                        expected: MessageType::Application,
-                        received: message_type,
-                    })
-                }
+                return Err(Error::UnexpectedMessageType {
+                    expected: expected_type,
+                    received: message_type,
+                });
             }
             let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
             // Should we return errors here? 🤔
