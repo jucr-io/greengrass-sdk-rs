@@ -4,7 +4,7 @@ mod connection;
 mod error;
 pub mod protocol;
 pub use error::{Error, Result};
-mod env;
+pub mod env;
 mod lifecycle_state;
 pub use lifecycle_state::LifecycleState;
 mod paused_updates;
