@@ -11,7 +11,6 @@ pub enum Error {
     Protocol(String),
     InternalServer(String),
     UnexpectedMessageType { expected: MessageType, received: MessageType },
-    UnexpectedStreamId { expected: i32, received: i32 },
     MissingHeader(&'static str),
     BufferTooLarge { size: usize, max_size: usize },
     EnvVarNotSet(&'static str),
@@ -45,12 +44,6 @@ impl Display for Error {
                 write!(
                     f,
                     "message of unexpected type (`{received}`) received. Expected: `{expected}`"
-                )
-            }
-            Self::UnexpectedStreamId { expected, received } => {
-                write!(
-                    f,
-                    "message with unexpected stream id (`{received}`) received. Expected: `{expected}`"
                 )
             }
             Self::MissingHeader(header) => write!(f, "Missing header: `{header}`"),
