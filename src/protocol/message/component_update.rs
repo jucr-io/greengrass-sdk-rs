@@ -33,6 +33,18 @@ impl<'m> DeferComponentUpdateRequest<'m> {
             Some(payload),
         )
     }
+
+    pub fn deployment_id(&self) -> Uuid {
+        self.deployment_id
+    }
+
+    pub fn component_name(&self) -> Option<&str> {
+        self.message
+    }
+
+    pub fn recheck_after_ms(&self) -> RecheckAfterMs {
+        self.recheck_after_ms
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
