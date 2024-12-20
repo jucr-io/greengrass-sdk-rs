@@ -155,11 +155,13 @@ impl Connection {
                 });
             }
             let stream_terminated = headers.message_flags().contains(MessageFlags::TerminateStream);
-            // Should we return errors here? 🤔
-            if last_response && !stream_terminated {
-                warn!("Response unexpectedly not marked as end of stream");
-            } else if !last_response && stream_terminated {
-                warn!("Unexpected end of stream");
+            if stream_id != 0 {
+                // Should we return errors here? 🤔
+                if last_response && !stream_terminated {
+                    warn!("Response unexpectedly not marked as end of stream");
+                } else if !last_response && stream_terminated {
+                    warn!("Unexpected end of stream");
+                }
             }
 
             break Ok(message);
