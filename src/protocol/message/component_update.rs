@@ -95,6 +95,12 @@ pub struct ComponentUpdateSubscriptionResponse {
 }
 
 impl ComponentUpdateSubscriptionResponse {
+    pub fn new(
+        pre_update_event: Option<PreComponentUpdateEvent>,
+        post_update_event: Option<PostComponentUpdateEvent>,
+    ) -> Self {
+        Self { pre_update_event, post_update_event }
+    }
     pub fn pre_update_event(&self) -> Option<&PreComponentUpdateEvent> {
         self.pre_update_event.as_ref()
     }
