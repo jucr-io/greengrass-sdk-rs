@@ -111,7 +111,6 @@ async fn mock_greengrass_server_response<ReqPayload>(
 {
     let mut buf = [0; 1024];
 
-    // Handshake
     let n = stream.read(&mut buf).await.unwrap();
     let msg: Message<ReqPayload> = Message::from_bytes(&mut &buf[..n]).unwrap();
     assert_eq!(msg.headers().message_type(), request_message_type);
