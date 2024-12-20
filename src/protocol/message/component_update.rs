@@ -131,6 +131,10 @@ pub struct PreComponentUpdateEvent {
 }
 
 impl PreComponentUpdateEvent {
+    pub fn new(deployment_id: Uuid, is_ggc_restarting: bool) -> Self {
+        Self { deployment_id, is_ggc_restarting }
+    }
+
     pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }
@@ -147,6 +151,10 @@ pub struct PostComponentUpdateEvent {
 }
 
 impl PostComponentUpdateEvent {
+    pub fn new(deployment_id: Uuid) -> Self {
+        Self { deployment_id }
+    }
+
     pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }
