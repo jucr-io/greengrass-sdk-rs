@@ -75,11 +75,8 @@ fn mock_greengrass_server() -> JoinHandle<()> {
                     .await;
                 } else {
                     // Component update subscription is received from a second connection.
-                    let response_headers = Headers::new(
-                        1,
-                        MessageType::Application,
-                        MessageFlags::TerminateStream.into(),
-                    );
+                    let response_headers =
+                        Headers::new(1, MessageType::Application, MessageFlags::none());
                     let response = Message::new(
                         response_headers,
                         Some(ComponentUpdateSubscriptionResponse::new(None, None)),
