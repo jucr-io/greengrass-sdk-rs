@@ -24,5 +24,11 @@ pub struct ConnectRequest {
     auth_token: String,
 }
 
+impl ConnectRequest {
+    pub fn auth_token(&self) -> &str {
+        &self.auth_token
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ConnectResponse {}
