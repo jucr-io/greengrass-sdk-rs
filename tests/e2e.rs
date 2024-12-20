@@ -19,6 +19,7 @@ use greengrass_sdk_rs::{
     },
     IpcClient, LifecycleState,
 };
+use test_log::test;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
@@ -124,7 +125,7 @@ async fn mock_greengrass_server_response<ReqPayload>(
     let _ = stream.write_all(response_bytes).await;
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn test_ipc_client() {
     mock_greengrass_server();
 
