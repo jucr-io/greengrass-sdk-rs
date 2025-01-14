@@ -3,21 +3,44 @@ use std::io;
 
 use crate::protocol::headers::MessageType;
 
+/// Error type for the AWS Greengrass Nucleus IPC client.
 #[derive(Debug)]
 pub enum Error {
+    /// An IO error occurred.
     Io(io::Error),
+    /// A JSON error occurred.
     Json(serde_json::Error),
+    /// An application error occurred.
     Application(String),
+    /// A protocol error occurred.
     Protocol(String),
+    /// An internal server error occurred.
     InternalServer(String),
-    UnexpectedMessageType { expected: MessageType, received: MessageType },
+    /// An error occurred because a message of an unexpected type was received.
+    UnexpectedMessageType {
+        /// The expected message type.
+        expected: MessageType,
+        /// The received message type.
+        received: MessageType,
+    },
+    /// Missing header from a message.
     MissingHeader(&'static str),
-    BufferTooLarge { size: usize, max_size: usize },
+    /// Buffer or string size exceeds maximum allowed size.
+    BufferTooLarge {
+        /// The size of the buffer or string.
+        size: usize,
+        /// The maximum allowed size.
+        max_size: usize,
+    },
+    /// An environment variable was not set.
     EnvVarNotSet(&'static str),
+    /// Checksum mismatch.
     ChecksumMismatch,
+    /// Connection refused by the server.
     ConnectionRefused,
 }
 
+/// Result type for the AWS Greengrass Nucleus IPC client.
 pub type Result<T> = core::result::Result<T, Error>;
 
 impl From<io::Error> for Error {

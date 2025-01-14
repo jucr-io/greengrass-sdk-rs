@@ -1,3 +1,5 @@
+//! Headers for IPC messages.
+
 use endi::{ReadBytes, WriteBytes};
 use enumflags2::{BitFlag, BitFlags};
 use std::{borrow::Cow, collections::HashMap, io::Write};
@@ -11,6 +13,7 @@ pub use message_flags::MessageFlags;
 mod message_type;
 pub use message_type::MessageType;
 
+/// Headers for IPC messages.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Headers<'h> {
     stream_id: i32,
@@ -20,6 +23,7 @@ pub struct Headers<'h> {
 }
 
 impl<'h> Headers<'h> {
+    /// Create a new set of headers.
     pub fn new(
         stream_id: i32,
         message_type: MessageType,
@@ -33,6 +37,7 @@ impl<'h> Headers<'h> {
         Self { headers, stream_id, message_type, message_flags }
     }
 
+    /// Insert a new header into the set.
     pub fn insert<N>(&mut self, name: N, value: Value<'h>)
     where
         N: Into<Cow<'h, str>>,
@@ -40,10 +45,12 @@ impl<'h> Headers<'h> {
         self.headers.insert(name.into(), value);
     }
 
+    /// Get a header by name.
     pub fn get(&self, name: &'static str) -> Option<&Value> {
         self.headers.get(name)
     }
 
+    /// Iterate over the headers.
     pub fn iter(&self) -> impl Iterator<Item = (&str, &Value)> {
         self.headers.iter().map(|(k, v)| (k.as_ref(), v))
     }
@@ -72,6 +79,7 @@ impl<'h> Headers<'h> {
         })
     }
 
+    /// Read headers from the given bytes in the IPC wire format.
     pub fn from_bytes(bytes: &mut &'h [u8]) -> Result<Self> {
         let mut headers = HashMap::new();
 
@@ -103,6 +111,7 @@ impl<'h> Headers<'h> {
         Ok(Self { headers, stream_id, message_type, message_flags })
     }
 
+    /// Convert the headers into an owned version.
     pub fn to_owned(&self) -> Headers<'static> {
         let headers =
             self.headers.iter().map(|(k, v)| (Cow::Owned(k.to_string()), v.to_owned())).collect();
@@ -115,14 +124,17 @@ impl<'h> Headers<'h> {
         }
     }
 
+    /// The stream ID of the message.
     pub fn stream_id(&self) -> i32 {
         self.stream_id
     }
 
+    /// The type of the message.
     pub fn message_type(&self) -> MessageType {
         self.message_type
     }
 
+    /// The flags set on the message.
     pub fn message_flags(&self) -> BitFlags<MessageFlags> {
         self.message_flags
     }

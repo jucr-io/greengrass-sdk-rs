@@ -3,20 +3,31 @@ use std::{borrow::Cow, io::Write};
 
 use crate::{Error, Result};
 
+/// A header value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'v> {
+    /// A boolean value.
     Bool(bool),
+    /// A byte value.
     Byte(u8),
+    /// A 16-bit integer value.
     Int16(i16),
+    /// A 32-bit integer value.
     Int32(i32),
+    /// A 64-bit integer value.
     Int64(i64),
+    /// A byte buffer value.
     ByteBuffer(Cow<'v, [u8]>),
+    /// A string value.
     String(Cow<'v, str>),
+    /// A timestamp value.
     Timestamp(i64),
+    /// A UUID value.
     Uuid(uuid::Uuid),
 }
 
 impl Value<'_> {
+    /// Get the type code of the value.
     pub const fn r#type(&self) -> u8 {
         match self {
             Value::Bool(b) => {
@@ -37,6 +48,7 @@ impl Value<'_> {
         }
     }
 
+    /// Write the value into the given writer in the IPC wire format.
     pub fn write_as_bytes(&self, writer: &mut impl Write) -> Result<usize> {
         // The type of the header value.
         writer.write_u8(endi::Endian::Big, self.r#type())?;
@@ -96,6 +108,7 @@ impl Value<'_> {
         Ok(bytes_written)
     }
 
+    /// Get the size of the value in bytes when serialized in the IPC wire format.
     pub fn size_in_bytes(&self) -> Result<u32> {
         // All values have a type byte so that's why 5 bytes for i32 for example.
         Ok(match self {
@@ -118,6 +131,7 @@ impl Value<'_> {
         })
     }
 
+    /// Convert the value into an owned version.
     pub fn to_owned(&self) -> Value<'static> {
         match self {
             Value::Bool(b) => Value::Bool(*b),
@@ -132,6 +146,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a boolean if it is one.
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Value::Bool(b) => Some(*b),
@@ -139,6 +154,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a byte if it is one.
     pub fn as_byte(&self) -> Option<u8> {
         match self {
             Value::Byte(b) => Some(*b),
@@ -146,6 +162,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a 16-bit integer if it is one.
     pub fn as_int16(&self) -> Option<i16> {
         match self {
             Value::Int16(i) => Some(*i),
@@ -153,6 +170,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a 32-bit integer if it is one.
     pub fn as_int32(&self) -> Option<i32> {
         match self {
             Value::Int32(i) => Some(*i),
@@ -160,6 +178,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a 64-bit integer if it is one.
     pub fn as_int64(&self) -> Option<i64> {
         match self {
             Value::Int64(i) => Some(*i),
@@ -167,6 +186,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a byte buffer if it is one.
     pub fn as_byte_buffer(&self) -> Option<&[u8]> {
         match self {
             Value::ByteBuffer(bytes) => Some(bytes),
@@ -174,6 +194,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a string if it is one.
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Value::String(s) => Some(s),
@@ -181,6 +202,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a timestamp if it is one.
     pub fn as_timestamp(&self) -> Option<i64> {
         match self {
             Value::Timestamp(ts) => Some(*ts),
@@ -188,6 +210,7 @@ impl Value<'_> {
         }
     }
 
+    /// Get the value as a UUID if it is one.
     pub fn as_uuid(&self) -> Option<uuid::Uuid> {
         match self {
             Value::Uuid(uuid) => Some(*uuid),
@@ -197,6 +220,7 @@ impl Value<'_> {
 }
 
 impl<'v> Value<'v> {
+    /// Read a header value from the given bytes in the IPC wire format.
     pub fn from_bytes(bytes: &mut &'v [u8]) -> Result<Self> {
         let r#type = bytes
             .first()

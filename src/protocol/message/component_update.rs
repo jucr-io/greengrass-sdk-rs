@@ -3,6 +3,7 @@ use core::num::NonZeroU64;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// A request to defer a component update.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DeferComponentUpdateRequest<'a> {
     #[serde(rename = "deploymentId")]
@@ -14,6 +15,7 @@ pub struct DeferComponentUpdateRequest<'a> {
 }
 
 impl<'m> DeferComponentUpdateRequest<'m> {
+    /// Creates a new `DeferComponentUpdateRequest`.
     pub fn new(
         stream_id: i32,
         deployment_id: Uuid,
@@ -34,19 +36,23 @@ impl<'m> DeferComponentUpdateRequest<'m> {
         )
     }
 
+    /// Returns the deployment ID parameter.
     pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }
 
+    /// Returns the component name parameter.
     pub fn component_name(&self) -> Option<&str> {
         self.message
     }
 
+    /// Returns the recheck after milliseconds parameter.
     pub fn recheck_after_ms(&self) -> RecheckAfterMs {
         self.recheck_after_ms
     }
 }
 
+/// The number of milliseconds to defer a component update.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum RecheckAfterMs {
     /// Do not defer the component update.
@@ -81,13 +87,16 @@ impl<'de> Deserialize<'de> for RecheckAfterMs {
     }
 }
 
+/// A response to a `DeferComponentUpdateRequest`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DeferComponentUpdateResponse {}
 
+/// A request to update the state of a component.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ComponentUpdateSubscriptionRequest {}
 
 impl ComponentUpdateSubscriptionRequest {
+    /// Creates a new `ComponentUpdateSubscriptionRequest`.
     pub fn new(stream_id: i32) -> Message<'static, Self> {
         Message::ipc_call(
             "aws.greengrass#SubscribeToComponentUpdatesRequest",
@@ -98,6 +107,7 @@ impl ComponentUpdateSubscriptionRequest {
     }
 }
 
+/// A response to a `ComponentUpdateSubscriptionRequest`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ComponentUpdateSubscriptionResponse {
     #[serde(rename = "preUpdateEvent", skip_serializing_if = "Option::is_none")]
@@ -107,21 +117,26 @@ pub struct ComponentUpdateSubscriptionResponse {
 }
 
 impl ComponentUpdateSubscriptionResponse {
+    /// Creates a new `ComponentUpdateSubscriptionResponse`.
     pub fn new(
         pre_update_event: Option<PreComponentUpdateEvent>,
         post_update_event: Option<PostComponentUpdateEvent>,
     ) -> Self {
         Self { pre_update_event, post_update_event }
     }
+
+    /// the pre-update event.
     pub fn pre_update_event(&self) -> Option<&PreComponentUpdateEvent> {
         self.pre_update_event.as_ref()
     }
 
+    /// the post-update event.
     pub fn post_update_event(&self) -> Option<&PostComponentUpdateEvent> {
         self.post_update_event.as_ref()
     }
 }
 
+/// An event that occurs before a component update.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct PreComponentUpdateEvent {
     #[serde(rename = "deploymentId")]
@@ -131,19 +146,23 @@ pub struct PreComponentUpdateEvent {
 }
 
 impl PreComponentUpdateEvent {
+    /// Creates a new `PreComponentUpdateEvent`.
     pub fn new(deployment_id: Uuid, is_ggc_restarting: bool) -> Self {
         Self { deployment_id, is_ggc_restarting }
     }
 
+    /// the deployment ID parameter.
     pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }
 
+    /// Is the Nucleus restarting.
     pub fn is_ggc_restarting(&self) -> bool {
         self.is_ggc_restarting
     }
 }
 
+/// An event that occurs after a component update.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct PostComponentUpdateEvent {
     #[serde(rename = "deploymentId")]
@@ -151,10 +170,12 @@ pub struct PostComponentUpdateEvent {
 }
 
 impl PostComponentUpdateEvent {
+    /// Creates a new `PostComponentUpdateEvent`.
     pub fn new(deployment_id: Uuid) -> Self {
         Self { deployment_id }
     }
 
+    /// Returns the deployment ID parameter.
     pub fn deployment_id(&self) -> Uuid {
         self.deployment_id
     }

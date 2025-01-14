@@ -12,18 +12,24 @@ mod paused_updates;
 use connection::Connection;
 use tokio::task::JoinHandle;
 
+/// The IPC client for interacting with the Greengrass Nucleus.
 pub struct IpcClient {
     conn: Connection,
     component_update_task: Option<JoinHandle<()>>,
 }
 
 impl IpcClient {
+    /// Create a new IPC client.
     pub async fn new() -> Result<Self> {
         let conn = Connection::new().await?;
 
         Ok(Self { conn, component_update_task: None })
     }
 
+    /// Pause component updates.
+    ///
+    /// After this call the, the component updates will be paused until
+    /// [`IpcClient::resume_component_update`] is called.
     pub async fn pause_component_update(&mut self) -> Result<()> {
         if self.component_update_task.is_some() {
             return Ok(());
@@ -36,6 +42,10 @@ impl IpcClient {
         Ok(())
     }
 
+    /// Resume component updates.
+    ///
+    /// This will resume the component updates that were paused by calling
+    /// [`IpcClient::pause_component_update`].
     pub async fn resume_component_update(&mut self) -> Result<()> {
         if let Some(handle) = self.component_update_task.take() {
             handle.abort();
@@ -44,6 +54,9 @@ impl IpcClient {
         Ok(())
     }
 
+    /// Manually update the state of the component.
+    ///
+    /// This is useful when you want to update the state of the component manually.
     pub async fn update_state(&mut self, state: LifecycleState) -> Result<()> {
         self.conn.update_state(state).await
     }

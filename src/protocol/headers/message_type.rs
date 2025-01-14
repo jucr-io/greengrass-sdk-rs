@@ -2,17 +2,27 @@ use core::fmt::Display;
 
 use crate::{Error, Result};
 
+/// The type of a message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i32)]
 pub enum MessageType {
+    /// An application message.
     Application = 0,
+    /// An application error message.
     ApplicationError = 1,
+    /// A ping message.
     Ping = 2,
+    /// A pong message.
     Pong = 3,
+    /// A connect message.
     Connect = 4,
+    /// A connect acknowledgment message.
     ConnectAck = 5,
+    /// A protocol error message.
     ProtocolError = 6,
+    /// An internal server error message.
     InternalError = 7,
+    /// The number of message types.
     Count = 8,
 }
 

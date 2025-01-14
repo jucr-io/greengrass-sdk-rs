@@ -26,6 +26,10 @@ use crate::{
     Error, Result,
 };
 
+/// A connection to the server.
+///
+/// This is the low-level API to directly interact with the server. Typically you would use the
+/// [`crate::IpcClient`] instead.
 #[derive(Debug)]
 pub struct Connection {
     socket: UnixStream,
@@ -34,6 +38,7 @@ pub struct Connection {
 }
 
 impl Connection {
+    /// Creates a new connection to the server.
     pub async fn new() -> Result<Self> {
         let socket_path = env::socket_path()?;
         let stream = UnixStream::connect(&socket_path).await?;
@@ -54,6 +59,7 @@ impl Connection {
         Ok(conn)
     }
 
+    /// Subscribes to component updates.
     pub async fn subscribe_to_component_updates(&mut self) -> Result<i32> {
         let id = self.next_stream_id();
         let message = ComponentUpdateSubscriptionRequest::new(id);
@@ -62,6 +68,7 @@ impl Connection {
         Ok(id)
     }
 
+    /// Defers a component update.
     pub async fn defer_component_update(
         &mut self,
         deployment_id: Uuid,
@@ -76,6 +83,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Updates the state of the lifecycle.
     pub async fn update_state(&mut self, state: crate::LifecycleState) -> Result<()> {
         let id = self.next_stream_id();
         let message = UpdateStateRequest::new(id, state);
@@ -84,6 +92,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Calls a method on a service.
     pub async fn call<'c, RequestPayload, ResponsePayload>(
         &'c mut self,
         request: Message<'_, RequestPayload>,
@@ -99,6 +108,7 @@ impl Connection {
         self.read_response(stream_id, last_response).await
     }
 
+    /// Sends a message.
     pub async fn send_message<Payload>(&mut self, message: Message<'_, Payload>) -> Result<()>
     where
         Payload: Serialize + Debug,
@@ -168,6 +178,7 @@ impl Connection {
         }
     }
 
+    /// Reads a message.
     pub async fn read_message<'c, Payload>(&'c mut self) -> Result<Message<'c, Payload>>
     where
         Payload: Deserialize<'c> + Debug,

@@ -18,6 +18,7 @@ use super::{
     prelude::Prelude,
 };
 
+/// A message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message<'m, Payload> {
     headers: Headers<'m>,
@@ -25,10 +26,12 @@ pub struct Message<'m, Payload> {
 }
 
 impl<'m, Payload> Message<'m, Payload> {
+    /// Creates a new message.
     pub fn new(headers: Headers<'m>, payload: Option<Payload>) -> Self {
         Self { headers, payload }
     }
 
+    /// Creates a new IPC call message.
     pub fn ipc_call(
         service_model_type: &'static str,
         operation: &'static str,
@@ -42,10 +45,12 @@ impl<'m, Payload> Message<'m, Payload> {
         Self::new(headers, payload)
     }
 
+    /// The headers.
     pub fn headers(&self) -> &Headers<'m> {
         &self.headers
     }
 
+    /// The payload.
     pub fn payload(&self) -> Option<&Payload> {
         self.payload.as_ref()
     }
@@ -55,6 +60,7 @@ impl<Payload> Message<'_, Payload>
 where
     Payload: Serialize + Debug,
 {
+    /// Converts the message to bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::with_capacity(1024);
 
@@ -92,6 +98,7 @@ impl<'m, Payload> Message<'m, Payload>
 where
     Payload: Deserialize<'m> + Debug,
 {
+    /// Parses a message from bytes.
     pub fn from_bytes(bytes: &mut &'m [u8]) -> Result<Self> {
         trace!("Parsing message from bytes: {:02X?}", bytes);
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
@@ -147,6 +154,7 @@ impl<Payload> Message<'_, Payload>
 where
     Payload: ToOwned,
 {
+    /// Converts the message to an owned message.
     pub fn to_owned(&self) -> Message<'static, Payload::Owned> {
         Message {
             headers: self.headers.to_owned(),

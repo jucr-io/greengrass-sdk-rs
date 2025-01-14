@@ -6,6 +6,7 @@ use crate::{env, Result};
 use serde::{Deserialize, Serialize};
 
 impl ConnectRequest {
+    /// Creates a new `ConnectRequest`.
     pub fn new() -> Result<Message<'static, Self>> {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
         headers.insert(":version", headers::Value::String("0.1.0".into()));
@@ -18,6 +19,7 @@ impl ConnectRequest {
     }
 }
 
+/// A request to connect to the server.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ConnectRequest {
     #[serde(rename = "authToken")]
@@ -25,10 +27,12 @@ pub struct ConnectRequest {
 }
 
 impl ConnectRequest {
+    /// The authentication token.
     pub fn auth_token(&self) -> &str {
         &self.auth_token
     }
 }
 
+/// A response to a connection request.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ConnectResponse {}

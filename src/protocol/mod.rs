@@ -1,3 +1,6 @@
+//! The protocol module contains the definitions of the protocol messages and the (de)serialization
+//! logic for them.
+
 pub mod headers;
 pub mod message;
 pub mod prelude;

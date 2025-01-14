@@ -1,7 +1,11 @@
+//! The prelude is a part of the message that is used to determine the length of the message and
+//! headers.
+
 use crc::{Crc, CRC_32_ISO_HDLC};
 use endi::{ReadBytes, WriteBytes};
 use std::io::{self, Write};
 
+/// The prelude.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prelude {
     headers_len: usize,
@@ -10,6 +14,7 @@ pub struct Prelude {
 }
 
 impl Prelude {
+    /// Create a new prelude.
     pub fn new(total_len: usize, headers_len: usize) -> io::Result<Self> {
         let total_len = total_len
             .try_into()
@@ -27,6 +32,7 @@ impl Prelude {
         Ok(Self { total_len: total_len as usize, headers_len: headers_len as usize, crc_checksum })
     }
 
+    /// Parse a prelude from bytes.
     pub fn from_bytes(bytes: &mut &[u8]) -> io::Result<Self> {
         let crc32 = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let prelude_checksum = crc32.checksum(&bytes[..8]);
@@ -45,6 +51,7 @@ impl Prelude {
         Ok(Self { total_len: total_len as usize, headers_len: headers_len as usize, crc_checksum })
     }
 
+    /// Write the prelude as bytes.
     pub fn write_as_bytes(&self, writer: &mut impl Write) -> io::Result<()> {
         // Safe to cast because our constructor ensures that the values are within u32 range.
         writer.write_u32(endi::Endian::Big, self.total_len as u32)?;
@@ -54,17 +61,21 @@ impl Prelude {
         Ok(())
     }
 
+    /// The length of the headers.
     pub fn headers_len(&self) -> usize {
         self.headers_len
     }
 
+    /// The total length of the message.
     pub fn total_len(&self) -> usize {
         self.total_len
     }
 
+    /// The CRC checksum of the prelude.
     pub fn crc_checksum(&self) -> u32 {
         self.crc_checksum
     }
 }
 
+/// The size of the prelude in bytes.
 pub const PRELUDE_SIZE: usize = 12;

@@ -1,6 +1,7 @@
 use super::Message;
 use serde::{Deserialize, Serialize};
 
+/// A request to update the state of a component.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct UpdateStateRequest {
     #[serde(rename = "state")]
@@ -8,6 +9,7 @@ pub struct UpdateStateRequest {
 }
 
 impl UpdateStateRequest {
+    /// Creates a new `UpdateStateRequest`.
     pub fn new(stream_id: i32, state: crate::LifecycleState) -> Message<'static, Self> {
         let payload = UpdateStateRequest { state };
 
@@ -20,5 +22,6 @@ impl UpdateStateRequest {
     }
 }
 
+/// A response to a state update request.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct UpdateStateResponse {}
