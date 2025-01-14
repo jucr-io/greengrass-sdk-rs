@@ -46,12 +46,12 @@ impl<'h> Headers<'h> {
     }
 
     /// Get a header by name.
-    pub fn get(&self, name: &'static str) -> Option<&Value> {
+    pub fn get(&self, name: &'static str) -> Option<&Value<'_>> {
         self.headers.get(name)
     }
 
     /// Iterate over the headers.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &Value)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &Value<'_>)> {
         self.headers.iter().map(|(k, v)| (k.as_ref(), v))
     }
 

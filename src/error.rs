@@ -56,7 +56,7 @@ impl From<serde_json::Error> for Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(e) => write!(f, "IO error: {e}"),
             Self::Json(e) => write!(f, "JSON error: {e}"),

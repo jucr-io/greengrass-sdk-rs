@@ -52,7 +52,7 @@ impl From<MessageType> for i32 {
 }
 
 impl Display for MessageType {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             MessageType::Application => write!(f, "Application"),
             MessageType::ApplicationError => write!(f, "ApplicationError"),
