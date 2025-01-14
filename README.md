@@ -1,2 +1,2 @@
-# greengrass-sdk-rs
+# greengrass-sdk
 Greengrass iot sdk: making a Rust wrapper around the C++ lib

@@ -4,7 +4,7 @@ use std::{
 };
 
 use enumflags2::BitFlags;
-use greengrass_sdk_rs::{
+use greengrass_sdk::{
     env::{AUTH_TOKEN_ENV, SOCKET_PATH_ENV},
     protocol::{
         headers::{Headers, MessageFlags, MessageType},

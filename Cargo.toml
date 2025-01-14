@@ -1,5 +1,5 @@
 [package]
-name = "greengrass-sdk-rs"
+name = "greengrass-sdk"
 version = "0.1.0"
 edition = "2021"
 
