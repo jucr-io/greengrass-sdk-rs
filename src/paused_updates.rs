@@ -1,7 +1,10 @@
 use core::num::NonZeroU64;
 
-use crate::protocol::{ComponentUpdateSubscriptionResponse, RecheckAfterMs};
-use crate::{connection::Connection, Error, Result};
+use crate::{
+    connection::Connection,
+    protocol::{ComponentUpdateSubscriptionResponse, RecheckAfterMs},
+    Error, Result,
+};
 
 use tracing::{debug, error, trace, warn};
 
