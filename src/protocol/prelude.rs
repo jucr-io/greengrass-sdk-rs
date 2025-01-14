@@ -78,4 +78,4 @@ impl Prelude {
 }
 
 /// The size of the prelude in bytes.
-pub const PRELUDE_SIZE: usize = 12;
+pub const SIZE: usize = 12;

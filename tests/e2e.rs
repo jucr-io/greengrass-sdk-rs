@@ -8,16 +8,9 @@ use greengrass_sdk_rs::{
     env::{AUTH_TOKEN_ENV, SOCKET_PATH_ENV},
     protocol::{
         headers::{Headers, MessageFlags, MessageType},
-        message::{
-            component_update::{
-                ComponentUpdateSubscriptionRequest, ComponentUpdateSubscriptionResponse,
-                DeferComponentUpdateRequest, DeferComponentUpdateResponse, PreComponentUpdateEvent,
-                RecheckAfterMs,
-            },
-            handshake::{ConnectRequest, ConnectResponse},
-            state::{UpdateStateRequest, UpdateStateResponse},
-            Message,
-        },
+        ComponentUpdateSubscriptionRequest, ComponentUpdateSubscriptionResponse, ConnectRequest,
+        ConnectResponse, DeferComponentUpdateRequest, DeferComponentUpdateResponse, Message,
+        PreComponentUpdateEvent, RecheckAfterMs, UpdateStateRequest, UpdateStateResponse,
     },
     IpcClient, LifecycleState,
 };

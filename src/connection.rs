@@ -11,17 +11,10 @@ use uuid::Uuid;
 use crate::{
     env,
     protocol::{
-        headers::{MessageFlags, MessageType},
-        message::{
-            component_update::{
-                ComponentUpdateSubscriptionRequest, ComponentUpdateSubscriptionResponse,
-                DeferComponentUpdateRequest, DeferComponentUpdateResponse, RecheckAfterMs,
-            },
-            handshake::{ConnectRequest, ConnectResponse},
-            state::{UpdateStateRequest, UpdateStateResponse},
-            Message,
-        },
-        prelude::{Prelude, PRELUDE_SIZE},
+        prelude::{Prelude, SIZE},
+        ComponentUpdateSubscriptionRequest, ComponentUpdateSubscriptionResponse, ConnectRequest,
+        ConnectResponse, DeferComponentUpdateRequest, DeferComponentUpdateResponse, Message,
+        MessageFlags, MessageType, RecheckAfterMs, UpdateStateRequest, UpdateStateResponse,
     },
     Error, Result,
 };
@@ -183,13 +176,13 @@ impl Connection {
     where
         Payload: Deserialize<'c> + Debug,
     {
-        self.socket.read_exact(&mut self.buffer[0..PRELUDE_SIZE]).await?;
-        let prelude = Prelude::from_bytes(&mut &self.buffer[0..PRELUDE_SIZE])?;
+        self.socket.read_exact(&mut self.buffer[0..SIZE]).await?;
+        let prelude = Prelude::from_bytes(&mut &self.buffer[0..SIZE])?;
         if prelude.total_len() > self.buffer.len() {
             self.buffer.resize(prelude.total_len(), 0);
         }
 
-        self.socket.read_exact(&mut self.buffer[PRELUDE_SIZE..prelude.total_len()]).await?;
+        self.socket.read_exact(&mut self.buffer[SIZE..prelude.total_len()]).await?;
 
         Message::from_bytes(&mut &self.buffer[0..prelude.total_len()])
     }

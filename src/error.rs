@@ -1,7 +1,7 @@
 use core::fmt::{self, Display, Formatter};
 use std::io;
 
-use crate::protocol::headers::MessageType;
+use crate::protocol::MessageType;
 
 /// Error type for the AWS Greengrass Nucleus IPC client.
 #[derive(Debug)]

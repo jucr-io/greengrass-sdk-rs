@@ -2,8 +2,11 @@
 //! logic for them.
 
 pub mod headers;
-pub mod message;
+mod message;
 pub mod prelude;
+
+pub use headers::{Headers, MessageFlags, MessageType};
+pub use message::*;
 
 #[cfg(test)]
 mod tests {
@@ -12,10 +15,7 @@ mod tests {
 
     use super::{
         headers::{Headers, MessageFlags, MessageType},
-        message::{
-            component_update::ComponentUpdateSubscriptionResponse, handshake::ConnectResponse,
-            Message,
-        },
+        ComponentUpdateSubscriptionResponse, ConnectResponse, Message,
     };
 
     #[test]

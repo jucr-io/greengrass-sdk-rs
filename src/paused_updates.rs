@@ -1,26 +1,24 @@
 use core::num::NonZeroU64;
 
-use crate::protocol::message::component_update::{
-    ComponentUpdateSubscriptionResponse, RecheckAfterMs,
-};
-pub use crate::{connection::Connection, Error, Result};
+use crate::protocol::{ComponentUpdateSubscriptionResponse, RecheckAfterMs};
+use crate::{connection::Connection, Error, Result};
 
 use tracing::{debug, error, trace, warn};
 
-pub struct PausedUpdates {
+pub(crate) struct PausedUpdates {
     conn: Connection,
     stream_id: i32,
 }
 
 impl PausedUpdates {
-    pub async fn new() -> Result<Self> {
+    pub(crate) async fn new() -> Result<Self> {
         let mut conn = Connection::new().await?;
         let stream_id = conn.subscribe_to_component_updates().await?;
 
         Ok(Self { conn, stream_id })
     }
 
-    pub async fn keep_paused(mut self) {
+    pub(crate) async fn keep_paused(mut self) {
         loop {
             trace!("Waiting for the next component update event..");
             let res = self

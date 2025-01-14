@@ -7,9 +7,13 @@ use tracing::trace;
 
 use serde_json::{from_slice, to_vec};
 
-pub mod component_update;
-pub mod handshake;
-pub mod state;
+mod component_update;
+mod handshake;
+mod state;
+
+pub use component_update::*;
+pub use handshake::*;
+pub use state::*;
 
 use crate::{Error, Result};
 

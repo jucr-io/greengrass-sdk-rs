@@ -4,12 +4,13 @@ mod connection;
 mod error;
 pub mod protocol;
 pub use error::{Error, Result};
+#[doc(hidden)]
 pub mod env;
 mod lifecycle_state;
 pub use lifecycle_state::LifecycleState;
 mod paused_updates;
 
-use connection::Connection;
+pub use connection::Connection;
 use tokio::task::JoinHandle;
 
 /// The IPC client for interacting with the Greengrass Nucleus.

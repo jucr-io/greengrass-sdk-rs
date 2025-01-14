@@ -28,7 +28,7 @@ pub enum Value<'v> {
 
 impl Value<'_> {
     /// Get the type code of the value.
-    pub const fn r#type(&self) -> u8 {
+    pub const fn type_code(&self) -> u8 {
         match self {
             Value::Bool(b) => {
                 if *b {
@@ -51,7 +51,7 @@ impl Value<'_> {
     /// Write the value into the given writer in the IPC wire format.
     pub fn write_as_bytes(&self, writer: &mut impl Write) -> Result<usize> {
         // The type of the header value.
-        writer.write_u8(endi::Endian::Big, self.r#type())?;
+        writer.write_u8(endi::Endian::Big, self.type_code())?;
         let mut bytes_written = 1;
 
         // The header value.
