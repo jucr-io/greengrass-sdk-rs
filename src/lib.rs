@@ -1,4 +1,5 @@
-#![warn(clippy::std_instead_of_core)]
+#![deny(missing_debug_implementations, nonstandard_style, rust_2018_idioms, missing_docs)]
+#![warn(unreachable_pub, clippy::std_instead_of_core)]
 #![doc = include_str!("../README.md")]
 
 mod connection;
