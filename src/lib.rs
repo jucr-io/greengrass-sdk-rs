@@ -1,4 +1,5 @@
 #![warn(clippy::std_instead_of_core)]
+#![doc = include_str!("../README.md")]
 
 mod connection;
 mod error;
