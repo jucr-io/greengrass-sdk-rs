@@ -13,6 +13,7 @@ mod paused_updates;
 pub use connection::Connection;
 use tokio::task::JoinHandle;
 
+#[derive(Debug)]
 /// The IPC client for interacting with the Greengrass Nucleus.
 pub struct IpcClient {
     conn: Connection,
