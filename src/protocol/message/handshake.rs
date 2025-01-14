@@ -2,18 +2,15 @@ use super::{
     super::headers::{self, Headers, MessageFlags, MessageType},
     Message,
 };
-use crate::{env, Result};
+use crate::Result;
 use serde::{Deserialize, Serialize};
 
-impl ConnectRequest {
+impl<'c> ConnectRequest<'c> {
     /// Creates a new `ConnectRequest`.
-    pub fn new() -> Result<Message<'static, Self>> {
+    pub fn new(auth_token: &'c str) -> Result<Message<'static, Self>> {
         let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
-        // TODO: Cache the env in a static variable and then `ConnectRequest` can use
-        // `&'static str`.
-        let auth_token = env::auth_token()?;
 
         Ok(Message::new(headers, Some(ConnectRequest { auth_token })))
     }
@@ -21,15 +18,15 @@ impl ConnectRequest {
 
 /// A request to connect to the server.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ConnectRequest {
-    #[serde(rename = "authToken")]
-    auth_token: String,
+pub struct ConnectRequest<'c> {
+    #[serde(rename = "authToken", borrow)]
+    auth_token: &'c str,
 }
 
-impl ConnectRequest {
+impl ConnectRequest<'_> {
     /// The authentication token.
     pub fn auth_token(&self) -> &str {
-        &self.auth_token
+        self.auth_token
     }
 }
 

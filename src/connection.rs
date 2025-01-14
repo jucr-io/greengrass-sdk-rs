@@ -28,18 +28,25 @@ pub struct Connection {
     socket: UnixStream,
     next_stream_id: i32,
     buffer: Vec<u8>,
+    socket_path: &'static str,
+    auth_token: &'static str,
 }
 
 impl Connection {
     /// Creates a new connection to the server.
-    pub async fn new() -> Result<Self> {
-        let socket_path = env::socket_path()?;
+    pub async fn new(socket_path: &'static str, auth_token: &'static str) -> Result<Self> {
         let stream = UnixStream::connect(&socket_path).await?;
 
-        let mut conn = Self { socket: stream, next_stream_id: 1, buffer: Vec::from([0; 1024]) };
+        let mut conn = Self {
+            socket: stream,
+            next_stream_id: 1,
+            buffer: Vec::from([0; 1024]),
+            socket_path,
+            auth_token,
+        };
 
         // Handshake
-        let message = ConnectRequest::new()?;
+        let message = ConnectRequest::new(auth_token)?;
         let response = conn.call::<_, ConnectResponse>(message, true).await?;
         let headers = response.headers();
         if headers.message_type() != MessageType::ConnectAck {
@@ -50,6 +57,15 @@ impl Connection {
         }
 
         Ok(conn)
+    }
+
+    /// Creates a new connection to the server, fetching the socket path and auth token from the
+    /// environment.
+    pub async fn from_env() -> Result<Self> {
+        let socket_path = env::socket_path()?;
+        let auth_token = env::auth_token()?;
+
+        Self::new(socket_path, auth_token).await
     }
 
     /// Subscribes to component updates.
@@ -185,6 +201,16 @@ impl Connection {
         self.socket.read_exact(&mut self.buffer[SIZE..prelude.total_len()]).await?;
 
         Message::from_bytes(&mut &self.buffer[0..prelude.total_len()])
+    }
+
+    /// The path of the socket.
+    pub fn socket_path(&self) -> &'static str {
+        self.socket_path
+    }
+
+    /// The authentication token.
+    pub fn auth_token(&self) -> &'static str {
+        self.auth_token
     }
 
     fn next_stream_id(&mut self) -> i32 {

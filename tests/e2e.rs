@@ -42,16 +42,17 @@ fn mock_greengrass_server(deferred_notifier: Sender<()>) -> JoinHandle<()> {
                     MessageType::ConnectAck,
                     MessageFlags::ConnectionAccepted.into(),
                 );
-                let response = Message::new(response_headers, None::<ConnectResponse>);
-                mock_greengrass_server_response(
-                    &mut stream,
-                    0,
-                    MessageType::Connect,
-                    MessageFlags::none(),
-                    ConnectRequest::new().unwrap().payload(),
-                    &response.to_bytes().unwrap(),
-                )
-                .await;
+                let mut buf = [0; 1024];
+                let n = stream.read(&mut buf).await.unwrap();
+                let msg: Message<ConnectRequest<'_>> = Message::from_bytes(&mut &buf[..n]).unwrap();
+                assert_eq!(msg.headers().message_type(), MessageType::Connect);
+                assert_eq!(msg.headers().message_flags(), MessageFlags::none());
+                assert_eq!(msg.headers().stream_id(), 0);
+                let auth_token = greengrass_sdk::env::auth_token().unwrap();
+                assert_eq!(msg.payload(), ConnectRequest::new(auth_token).unwrap().payload());
+                let response_bytes =
+                    Message::new(response_headers, None::<ConnectResponse>).to_bytes().unwrap();
+                let _ = stream.write_all(&response_bytes).await;
 
                 if client_num == 1 {
                     // Receive set component state request.
@@ -106,7 +107,6 @@ fn mock_greengrass_server(deferred_notifier: Sender<()>) -> JoinHandle<()> {
                         MessageType::Application,
                         MessageFlags::TerminateStream.into(),
                     );
-                    let mut buf = [0; 1024];
 
                     let n = stream.read(&mut buf).await.unwrap();
                     let msg: Message<DeferComponentUpdateRequest> =
@@ -163,7 +163,7 @@ async fn test_ipc_client() {
     let (sender, mut receiver) = channel(1);
     mock_greengrass_server(sender);
 
-    let mut client = IpcClient::new().await.unwrap();
+    let mut client = IpcClient::from_env().await.unwrap();
 
     client.update_state(LifecycleState::Running).await.unwrap();
 

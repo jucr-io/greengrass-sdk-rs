@@ -24,8 +24,15 @@ pub struct IpcClient {
 
 impl IpcClient {
     /// Create a new IPC client.
-    pub async fn new() -> Result<Self> {
-        let conn = Connection::new().await?;
+    pub async fn new(socket_path: &'static str, auth_token: &'static str) -> Result<Self> {
+        let conn = Connection::new(socket_path, auth_token).await?;
+
+        Ok(Self { conn, component_update_task: None })
+    }
+
+    /// Create a new IPC client, fetching the socket path and auth token from the environment.
+    pub async fn from_env() -> Result<Self> {
+        let conn = Connection::from_env().await?;
 
         Ok(Self { conn, component_update_task: None })
     }
@@ -39,7 +46,9 @@ impl IpcClient {
             return Ok(());
         }
 
-        let paused_updates = paused_updates::PausedUpdates::new().await?;
+        let paused_updates =
+            paused_updates::PausedUpdates::new(self.conn.socket_path(), self.conn.auth_token())
+                .await?;
         let component_update_task = tokio::spawn(paused_updates.keep_paused());
         assert!(self.component_update_task.replace(component_update_task).is_none());
 

@@ -14,8 +14,8 @@ pub(crate) struct PausedUpdates {
 }
 
 impl PausedUpdates {
-    pub(crate) async fn new() -> Result<Self> {
-        let mut conn = Connection::new().await?;
+    pub(crate) async fn new(socket_path: &'static str, auth_token: &'static str) -> Result<Self> {
+        let mut conn = Connection::new(socket_path, auth_token).await?;
         let stream_id = conn.subscribe_to_component_updates().await?;
 
         Ok(Self { conn, stream_id })
