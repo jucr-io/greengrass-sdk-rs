@@ -40,7 +40,7 @@ impl Connection {
         let mut conn = Self {
             socket: stream,
             next_stream_id: 1,
-            buffer: Vec::from([0; 1024]),
+            buffer: Vec::from([0; INITIAL_BUFFER_SIZE]),
             socket_path,
             auth_token,
         };
@@ -220,3 +220,5 @@ impl Connection {
         stream_id
     }
 }
+
+const INITIAL_BUFFER_SIZE: usize = 1024;
