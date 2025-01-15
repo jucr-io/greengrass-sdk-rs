@@ -43,6 +43,16 @@ pub enum Error {
 /// Result type for the AWS Greengrass Nucleus IPC client.
 pub type Result<T> = core::result::Result<T, Error>;
 
+impl core::error::Error for Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::Io(e) => Some(e),
+            Self::Json(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
