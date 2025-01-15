@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
 
 **Note:** The [`IpcClient::from_env`] method used in the example above, requires `SVCUID` and
 `AWS_GG_NUCLEUS_DOMAIN_SOCKET_FILEPATH_FOR_COMPONENT` environment variables to be set
-appropriately. The nuclues runtime sets them for components it launches directly.
+appropriately. The nucleus runtime sets them for components it launches directly.
 
 ## Status
 
