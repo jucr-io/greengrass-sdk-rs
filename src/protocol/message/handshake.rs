@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 impl<'c> ConnectRequest<'c> {
     /// Creates a new `ConnectRequest`.
     pub fn new(auth_token: &'c str) -> Result<Message<'static, Self>> {
-        let mut headers = Headers::new(0, MessageType::Connect, MessageFlags::none());
+        let mut headers = Headers::new(FIRST_STREAM_ID, MessageType::Connect, MessageFlags::none());
         headers.insert(":version", headers::Value::String("0.1.0".into()));
         headers.insert(":content-type", headers::Value::String("application/json".into()));
 
@@ -33,3 +33,5 @@ impl ConnectRequest<'_> {
 /// A response to a connection request.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ConnectResponse {}
+
+pub(crate) const FIRST_STREAM_ID: i32 = 0; // Reserved for the connection handshake messages.
