@@ -56,7 +56,7 @@ impl PausedUpdates {
             let deployment_id = match response.pre_update_event().map(|e| e.deployment_id()) {
                 Some(d) => d,
                 None => {
-                    debug!("No `preUpdateEvent` in the update, ignoring..");
+                    debug!("No `preUpdateEvent` in the update, ignoring...");
 
                     continue;
                 }
