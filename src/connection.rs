@@ -69,6 +69,15 @@ impl Connection {
     }
 
     /// Subscribes to component updates.
+    ///
+    /// If you subscribe to the component updates, nucleus will expect you to respond to all
+    /// `pre-update` events using `defer_component_update` method. If you do not want to defer the
+    /// update, pass `RecheckAfterMs::DontDefer` as the `recheck_after_ms` argument.
+    ///
+    /// All of this is handled for you by the high-level API provided by [`crate::IpcClient`].
+    ///
+    /// Returns the stream ID of the subscription that identifies the messages belonging to this
+    /// stream.
     pub async fn subscribe_to_component_updates(&mut self) -> Result<i32> {
         let id = self.next_stream_id();
         let message = ComponentUpdateSubscriptionRequest::new(id);
